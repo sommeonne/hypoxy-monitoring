@@ -1,0 +1,230 @@
+version: '3.9'
+
+networks:
+  hypoxy-net:
+    driver: bridge
+
+volumes:
+  postgres_data:
+
+x-common-env: &common-env
+  DB_HOST: postgres
+  DB_PORT: 5432
+  DB_NAME: ${DB_NAME:-hypoxy_db}
+  DB_USER: ${DB_USER:-hypoxy}
+  DB_PASSWORD: ${DB_PASSWORD:-hypoxy_password}
+  REDIS_HOST: redis
+  REDIS_PORT: 6379
+  JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+  JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-24h}
+  NODE_ENV: ${NODE_ENV:-development}
+
+x-service-depends: &service-depends
+  depends_on:
+    postgres:
+      condition: service_healthy
+    redis:
+      condition: service_healthy
+
+x-restart-policy: &restart-policy
+  restart: unless-stopped
+
+services:
+
+  # ── Infrastructure ─────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:15-alpine
+    <<: *restart-policy
+    environment:
+      POSTGRES_DB: ${DB_NAME:-hypoxy_db}
+      POSTGRES_USER: ${DB_USER:-hypoxy}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-hypoxy_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - hypoxy-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-hypoxy} -d ${DB_NAME:-hypoxy_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    <<: *restart-policy
+    networks:
+      - hypoxy-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    ports:
+      - "6379:6379"
+
+  # ── Backend Services ────────────────────────────────────────────────────────
+
+  api-gateway:
+    build:
+      context: ./services/api-gateway
+      dockerfile: Dockerfile
+    <<: [*restart-policy, *service-depends]
+    environment:
+      <<: *common-env
+      PORT: 3000
+      DEVICE_SERVICE_URL: ${DEVICE_SERVICE_URL:-http://device-service:3001}
+      PATIENT_SERVICE_URL: ${PATIENT_SERVICE_URL:-http://patient-service:3002}
+      ANALYSIS_SERVICE_URL: ${ANALYSIS_SERVICE_URL:-http://analysis-service:3003}
+      ALERT_SERVICE_URL: ${ALERT_SERVICE_URL:-http://alert-service:3004}
+      SESSION_SERVICE_URL: ${SESSION_SERVICE_URL:-http://session-service:3005}
+      REPORT_SERVICE_URL: ${REPORT_SERVICE_URL:-http://report-service:3006}
+    ports:
+      - "3000:3000"
+    networks:
+      - hypoxy-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  device-service:
+    build:
+      context: ./services/device-service
+      dockerfile: Dockerfile
+    <<: [*restart-policy, *service-depends]
+    environment:
+      <<: *common-env
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    networks:
+      - hypoxy-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3001/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  patient-service:
+    build:
+      context: ./services/patient-service
+      dockerfile: Dockerfile
+    <<: [*restart-policy, *service-depends]
+    environment:
+      <<: *common-env
+      PORT: 3002
+    ports:
+      - "3002:3002"
+    networks:
+      - hypoxy-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3002/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  analysis-service:
+    build:
+      context: ./services/analysis-service
+      dockerfile: Dockerfile
+    <<: [*restart-policy, *service-depends]
+    environment:
+      <<: *common-env
+      PORT: 3003
+    ports:
+      - "3003:3003"
+    networks:
+      - hypoxy-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3003/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  alert-service:
+    build:
+      context: ./services/alert-service
+      dockerfile: Dockerfile
+    <<: [*restart-policy, *service-depends]
+    environment:
+      <<: *common-env
+      PORT: 3004
+    ports:
+      - "3004:3004"
+    networks:
+      - hypoxy-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3004/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  session-service:
+    build:
+      context: ./services/session-service
+      dockerfile: Dockerfile
+    <<: [*restart-policy, *service-depends]
+    environment:
+      <<: *common-env
+      PORT: 3005
+    ports:
+      - "3005:3005"
+    networks:
+      - hypoxy-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3005/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  report-service:
+    build:
+      context: ./services/report-service
+      dockerfile: Dockerfile
+    <<: [*restart-policy, *service-depends]
+    environment:
+      <<: *common-env
+      PORT: 3006
+    ports:
+      - "3006:3006"
+    networks:
+      - hypoxy-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3006/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ── Frontend ────────────────────────────────────────────────────────────────
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    <<: *restart-policy
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    ports:
+      - "80:80"
+    networks:
+      - hypoxy-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80 || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
