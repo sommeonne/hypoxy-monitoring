@@ -2,6 +2,7 @@ import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { createProxyMiddleware } from 'http-proxy-middleware';
+import { ClientRequest } from 'http';
 
 const ROUTE_MAP: Record<string, string> = {
   '/api/devices': 'DEVICE_SERVICE_URL',
@@ -42,6 +43,15 @@ export class ProxyMiddleware implements NestMiddleware {
       changeOrigin: true,
       pathRewrite: { [`^/api`]: '' },
       on: {
+        proxyReq: (proxyReq: ClientRequest, req: Request) => {
+          const body = (req as any).body;
+          if (body !== undefined && body !== null) {
+            const bodyData = JSON.stringify(body);
+            proxyReq.setHeader('Content-Type', 'application/json');
+            proxyReq.setHeader('Content-Length', Buffer.byteLength(bodyData));
+            proxyReq.write(bodyData);
+          }
+        },
         error: (_err: Error, _req: Request, res: Response) => {
           this.logger.error(`Proxy error for ${path}`);
           res.status(502).json({ message: 'Service unavailable', path });

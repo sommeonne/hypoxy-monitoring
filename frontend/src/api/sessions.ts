@@ -27,4 +27,6 @@ export const fetchPatientSessions = (patientId: string) =>
   api.get<Session[]>(`/sessions/patient/${patientId}`);
 export const startSession = (data: { patientId: string; doctorId?: string }) =>
   api.post<Session>('/sessions', data);
-export const endSession = (id: string) => api.put<Session>(`/sessions/${id}/end`, {});
+export type EndSessionData = Partial<Omit<SessionSummary, 'durationMinutes'>>;
+export const endSession = (id: string, data: EndSessionData = {}) =>
+  api.put<Session>(`/sessions/${id}/end`, data);

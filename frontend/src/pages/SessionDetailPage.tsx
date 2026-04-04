@@ -41,7 +41,19 @@ export default function SessionDetailPage() {
   }, [measurements]);
 
   const endMutation = useMutation({
-    mutationFn: () => endSession(id!),
+    mutationFn: () => {
+      const data = liveData.length > 0 ? liveData : measurements;
+      const summary = data.length > 0 ? {
+        totalMeasurements: data.length,
+        alertCount: alerts.length,
+        avgSpo2: Math.round((data.reduce((s, m) => s + m.spo2, 0) / data.length) * 10) / 10,
+        avgHeartRate: Math.round((data.reduce((s, m) => s + m.heartRate, 0) / data.length) * 10) / 10,
+        avgRespiratoryRate: Math.round((data.reduce((s, m) => s + m.respiratoryRate, 0) / data.length) * 10) / 10,
+        minSpo2: Math.min(...data.map((m) => m.spo2)),
+        maxHeartRate: Math.max(...data.map((m) => m.heartRate)),
+      } : { totalMeasurements: 0, alertCount: alerts.length };
+      return endSession(id!, summary);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['session', id] }),
   });
 

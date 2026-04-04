@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Badge } from 'antd';
-import { BellOutlined, DashboardOutlined, TeamOutlined } from '@ant-design/icons';
+import { Layout, Menu, Badge, Avatar, Dropdown } from 'antd';
+import { BellOutlined, DashboardOutlined, TeamOutlined, MedicineBoxOutlined, UserOutlined, LogoutOutlined } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
+import { isAdmin, getUsername, logout } from '../utils/auth';
 
 const { Header } = Layout;
 
@@ -19,7 +20,20 @@ export default function AppHeader() {
   const menuItems = [
     { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
     { key: '/patients', icon: <TeamOutlined />, label: 'Patients' },
+    ...(isAdmin() ? [{ key: '/doctors', icon: <MedicineBoxOutlined />, label: 'Doctors' }] : []),
   ];
+
+  const userMenu = {
+    items: [
+      { key: 'logout', icon: <LogoutOutlined />, label: 'Sign Out', danger: true },
+    ],
+    onClick: ({ key }: { key: string }) => {
+      if (key === 'logout') {
+        logout();
+        navigate('/login', { replace: true });
+      }
+    },
+  };
 
   return (
     <Header style={{ display: 'flex', alignItems: 'center', gap: 24, padding: '0 24px' }}>
@@ -40,6 +54,13 @@ export default function AppHeader() {
           onClick={() => setUnreadCount(0)}
         />
       </Badge>
+      <Dropdown menu={userMenu} placement="bottomRight">
+        <Avatar
+          icon={<UserOutlined />}
+          style={{ cursor: 'pointer', backgroundColor: '#1677ff', marginLeft: 8 }}
+          title={getUsername()}
+        />
+      </Dropdown>
     </Header>
   );
 }
