@@ -30,9 +30,6 @@ x-restart-policy: &restart-policy
   restart: unless-stopped
 
 services:
-
-  # ── Infrastructure ─────────────────────────────────────────────────────────
-
   postgres:
     image: postgres:15-alpine
     <<: *restart-policy
@@ -66,8 +63,6 @@ services:
       start_period: 10s
     ports:
       - "6379:6379"
-
-  # ── Backend Services ────────────────────────────────────────────────────────
 
   api-gateway:
     build:
@@ -207,8 +202,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-
-  # ── Frontend ────────────────────────────────────────────────────────────────
 
   frontend:
     build:

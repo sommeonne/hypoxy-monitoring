@@ -4,9 +4,10 @@ import { AlertsController } from './alerts.controller';
 import { AlertsService } from './alerts.service';
 import { AlertsGateway } from './alerts.gateway';
 import { Alert } from './alert.entity';
+import { RedisModule } from '../redis/redis.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Alert])],
+  imports: [TypeOrmModule.forFeature([Alert]), RedisModule],
   controllers: [AlertsController],
   providers: [AlertsService, AlertsGateway],
 })

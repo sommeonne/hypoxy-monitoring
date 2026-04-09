@@ -45,7 +45,7 @@ export default function DashboardPage() {
           <Card><Title level={4} style={{ color: '#1890ff' }}>{sessions.length}</Title><p>Active Sessions</p></Card>
         </Col>
         <Col span={8}>
-          <Card><Title level={4} style={{ color: '#ff4d4f' }}>{alerts.length}</Title><p>Unacknowledged Alerts</p></Card>
+          <Card><Title level={4} style={{ color: '#ff4d4f' }}>{alerts.length}</Title><p>Alerts</p></Card>
         </Col>
       </Row>
 
@@ -72,7 +72,7 @@ export default function DashboardPage() {
       </Card>
 
       {alerts.length > 0 && (
-        <Card title={`Unacknowledged Alerts (${alerts.length})`}>
+        <Card title={`Alerts (${alerts.length})`}>
           <Table
             dataSource={alerts.slice(0, 10)} rowKey="id" size="small" pagination={false}
             columns={[

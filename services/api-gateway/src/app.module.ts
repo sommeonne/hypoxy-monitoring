@@ -10,6 +10,7 @@ import { HealthModule } from './health/health.module';
 import { DoctorsModule } from './doctors/doctors.module';
 import { Doctor } from './doctors/doctor.entity';
 import { ProxyMiddleware } from './proxy/proxy.middleware';
+import { WebsocketModule } from './websocket/websocket.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { ProxyMiddleware } from './proxy/proxy.middleware';
     AuthModule,
     HealthModule,
     DoctorsModule,
+    WebsocketModule,
   ],
 })
 export class AppModule {
