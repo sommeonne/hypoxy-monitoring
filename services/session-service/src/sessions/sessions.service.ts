@@ -4,12 +4,14 @@ import { Repository } from 'typeorm';
 import { Session, SessionStatus, SessionSummary } from './session.entity';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { EndSessionDto } from './dto/end-session.dto';
+import { RedisPublisherService } from '../redis/redis-publisher.service';
 
 @Injectable()
 export class SessionsService {
   constructor(
     @InjectRepository(Session)
     private readonly repo: Repository<Session>,
+    private readonly redisPublisher: RedisPublisherService,
   ) {}
 
   async create(dto: CreateSessionDto): Promise<Session> {
@@ -18,7 +20,9 @@ export class SessionsService {
       startedAt: new Date(),
       status: SessionStatus.ACTIVE,
     });
-    return this.repo.save(session);
+    const saved = await this.repo.save(session);
+    await this.redisPublisher.publish('sessions', JSON.stringify(saved));
+    return saved;
   }
 
   async end(id: string, dto: EndSessionDto): Promise<Session> {
@@ -48,7 +52,9 @@ export class SessionsService {
       summary,
     });
 
-    return this.repo.save(session);
+    const updated = await this.repo.save(session);
+    await this.redisPublisher.publish('sessions', JSON.stringify(updated));
+    return updated;
   }
 
   async findOne(id: string): Promise<Session> {

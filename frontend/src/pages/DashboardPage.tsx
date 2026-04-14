@@ -1,17 +1,76 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Row, Col, Card, Table, Tag, Typography, Empty, Spin } from 'antd';
+import {
+  MonitorOutlined,
+  AlertOutlined,
+  ExclamationCircleOutlined,
+  CheckCircleOutlined,
+} from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchActiveSessions } from '../api/sessions';
-import { fetchUnacknowledgedAlerts, Alert } from '../api/alerts';
+import { fetchPatients } from '../api/patients';
+import { fetchUnacknowledgedAlerts, fetchAlerts, Alert } from '../api/alerts';
 import { useSocket } from '../hooks/useSocket';
 import { useNavigate } from 'react-router-dom';
 
-const { Title } = Typography;
+const { Text } = Typography;
+
+type AlertFilter = 'ALL' | 'CRITICAL' | 'WARNING' | 'ACKNOWLEDGED';
+
+function StatCard({
+  label,
+  value,
+  icon,
+  accent,
+  bg,
+}: {
+  label: string;
+  value: number;
+  icon: React.ReactNode;
+  accent: string;
+  bg: string;
+}) {
+  return (
+    <Card
+      style={{
+        borderRadius: 12,
+        border: '1px solid #E2E8F0',
+        borderLeft: `4px solid ${accent}`,
+        background: '#fff',
+        boxShadow: 'none',
+      }}
+      styles={{ body: { padding: '20px 24px' } }}
+    >
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div>
+          <div className="label-caps" style={{ marginBottom: 8 }}>{label}</div>
+          <div style={{ fontSize: 32, fontWeight: 700, color: accent, lineHeight: 1 }}>{value}</div>
+        </div>
+        <div
+          style={{
+            width: 44,
+            height: 44,
+            borderRadius: 12,
+            background: bg,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            fontSize: 20,
+            color: accent,
+          }}
+        >
+          {icon}
+        </div>
+      </div>
+    </Card>
+  );
+}
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { on } = useSocket();
+  const [alertFilter, setAlertFilter] = useState<AlertFilter>('ALL');
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ['activeSessions'],
@@ -19,10 +78,25 @@ export default function DashboardPage() {
     refetchInterval: 10_000,
   });
 
-  const { data: alerts = [] } = useQuery({
+  const { data: patients = [] } = useQuery({
+    queryKey: ['patients'],
+    queryFn: fetchPatients,
+  });
+
+  const patientNames = Object.fromEntries(
+    patients.map((p) => [p.id, `${p.firstName} ${p.lastName}`]),
+  );
+
+  const { data: unacknowledgedAlerts = [] } = useQuery({
     queryKey: ['unacknowledgedAlerts'],
     queryFn: fetchUnacknowledgedAlerts,
     refetchInterval: 15_000,
+  });
+
+  const { data: acknowledgedAlerts = [] } = useQuery({
+    queryKey: ['acknowledgedAlerts'],
+    queryFn: () => fetchAlerts({ acknowledged: true }),
+    refetchInterval: 30_000,
   });
 
   useEffect(() => {
@@ -32,57 +106,247 @@ export default function DashboardPage() {
     const offA = on('alert:new', () =>
       queryClient.invalidateQueries({ queryKey: ['unacknowledgedAlerts'] }),
     );
-    return () => { offM(); offA(); };
+    const offS = on('session:updated', () =>
+      queryClient.invalidateQueries({ queryKey: ['activeSessions'] }),
+    );
+    return () => { offM(); offA(); offS(); };
   }, [on, queryClient]);
 
   if (isLoading) return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
 
+  const criticalCount = unacknowledgedAlerts.filter((a) => a.level === 'CRITICAL').length;
+  const warningCount = unacknowledgedAlerts.filter((a) => a.level === 'WARNING').length;
+  const acknowledgedCount = acknowledgedAlerts.length;
+
+  const allAlerts: (Alert & { _acknowledged?: boolean })[] = [
+    ...unacknowledgedAlerts,
+    ...acknowledgedAlerts.map((a) => ({ ...a, _acknowledged: true })),
+  ];
+
+  const filteredAlerts = allAlerts.filter((a) => {
+    if (alertFilter === 'ALL') return true;
+    if (alertFilter === 'CRITICAL') return a.level === 'CRITICAL' && !a.acknowledged;
+    if (alertFilter === 'WARNING') return a.level === 'WARNING' && !a.acknowledged;
+    if (alertFilter === 'ACKNOWLEDGED') return a.acknowledged;
+    return true;
+  }).slice(0, 10);
+
+  const filterButtons: { key: AlertFilter; label: string; cls: string }[] = [
+    { key: 'ALL', label: `All (${unacknowledgedAlerts.length + acknowledgedCount})`, cls: 'f-all' },
+    { key: 'CRITICAL', label: `Critical (${criticalCount})`, cls: 'f-critical' },
+    { key: 'WARNING', label: `Warning (${warningCount})`, cls: 'f-warning' },
+    { key: 'ACKNOWLEDGED', label: `Acknowledged (${acknowledgedCount})`, cls: 'f-acknowledged' },
+  ];
+
   return (
     <div>
-      <Title level={2}>Dashboard</Title>
-      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
-        <Col span={8}>
-          <Card><Title level={4} style={{ color: '#1890ff' }}>{sessions.length}</Title><p>Active Sessions</p></Card>
+      {/* Page title */}
+      <div style={{ marginBottom: 24 }}>
+        <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: 0 }}>Dashboard</h1>
+        <Text style={{ color: '#64748B', fontSize: 13 }}>Real-time patient monitoring overview</Text>
+      </div>
+
+      {/* Stat cards */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 28 }}>
+        <Col xs={24} sm={12} lg={6}>
+          <StatCard
+            label="Active Sessions"
+            value={sessions.length}
+            icon={<MonitorOutlined />}
+            accent="#1D9E75"
+            bg="#E1F5EE"
+          />
         </Col>
-        <Col span={8}>
-          <Card><Title level={4} style={{ color: '#ff4d4f' }}>{alerts.length}</Title><p>Alerts</p></Card>
+        <Col xs={24} sm={12} lg={6}>
+          <StatCard
+            label="Critical Alerts"
+            value={criticalCount}
+            icon={<AlertOutlined />}
+            accent="#E24B4A"
+            bg="#FEF2F2"
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <StatCard
+            label="Warning Alerts"
+            value={warningCount}
+            icon={<ExclamationCircleOutlined />}
+            accent="#EF9F27"
+            bg="#FFFBEB"
+          />
+        </Col>
+        <Col xs={24} sm={12} lg={6}>
+          <StatCard
+            label="Acknowledged"
+            value={acknowledgedCount}
+            icon={<CheckCircleOutlined />}
+            accent="#7F77DD"
+            bg="#F3F2FF"
+          />
         </Col>
       </Row>
 
-      <Card title="Active Sessions" style={{ marginBottom: 24 }}>
+      {/* Active sessions */}
+      <Card
+        style={{ marginBottom: 24, borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
+        styles={{ body: { padding: 20 } }}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="pulse-dot-wrap"><div className="pulse-dot-inner" /></div>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#0F172A' }}>Active Sessions</span>
+            <span
+              style={{
+                background: '#E1F5EE',
+                color: '#1D9E75',
+                borderRadius: 20,
+                padding: '1px 10px',
+                fontSize: 12,
+                fontWeight: 600,
+              }}
+            >
+              {sessions.length}
+            </span>
+          </div>
+        }
+      >
         {sessions.length === 0 ? (
-          <Empty description="No active sessions" />
+          <Empty description="No active sessions" image={Empty.PRESENTED_IMAGE_SIMPLE} />
         ) : (
-          <Row gutter={[16, 16]}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {sessions.map((session) => (
-              <Col key={session.id} xs={24} md={12} lg={8}>
-                <Card
-                  hoverable size="small"
-                  title={`Session ${session.id.slice(0, 8)}...`}
-                  onClick={() => navigate(`/sessions/${session.id}`)}
-                  extra={<Tag color="green">ACTIVE</Tag>}
-                >
-                  <p>Patient: {session.patientId.slice(0, 8)}...</p>
-                  <p>Started: {new Date(session.startedAt).toLocaleTimeString()}</p>
-                </Card>
-              </Col>
+              <div
+                key={session.id}
+                onClick={() => navigate(`/sessions/${session.id}`)}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '12px 16px',
+                  borderRadius: 8,
+                  border: '1px solid #E2E8F0',
+                  cursor: 'pointer',
+                  transition: 'background 0.15s, border-color 0.15s',
+                  background: '#fff',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = '#F0FDF9';
+                  (e.currentTarget as HTMLElement).style.borderColor = '#1D9E75';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.background = '#fff';
+                  (e.currentTarget as HTMLElement).style.borderColor = '#E2E8F0';
+                }}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div className="pulse-dot-wrap"><div className="pulse-dot-inner" /></div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: '#0F172A' }}>
+                      Session {session.id.slice(0, 8)}
+                    </div>
+                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
+                      {patientNames[session.patientId] ?? `Patient ${session.patientId.slice(0, 8)}`}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <Text style={{ fontSize: 12, color: '#94A3B8' }}>
+                    {new Date(session.startedAt).toLocaleTimeString()}
+                  </Text>
+                  <Tag
+                    style={{
+                      background: '#E1F5EE',
+                      color: '#1D9E75',
+                      border: 'none',
+                      borderRadius: 6,
+                      fontWeight: 600,
+                      fontSize: 11,
+                    }}
+                  >
+                    ACTIVE
+                  </Tag>
+                </div>
+              </div>
             ))}
-          </Row>
+          </div>
         )}
       </Card>
 
-      {alerts.length > 0 && (
-        <Card title={`Alerts (${alerts.length})`}>
-          <Table
-            dataSource={alerts.slice(0, 10)} rowKey="id" size="small" pagination={false}
-            columns={[
-              { title: 'Level', dataIndex: 'level', render: (l) => <Tag color={l === 'CRITICAL' ? 'red' : 'orange'}>{l}</Tag> },
-              { title: 'Message', dataIndex: 'message', ellipsis: true },
-              { title: 'Time', dataIndex: 'createdAt', render: (d) => new Date(d).toLocaleString() },
-            ]}
-          />
-        </Card>
-      )}
+      {/* Alerts table */}
+      <Card
+        style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
+        styles={{ body: { padding: 20 } }}
+        title={
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: '#0F172A' }}>Alerts</span>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {filterButtons.map(({ key, label, cls }) => (
+                <button
+                  key={key}
+                  className={`filter-btn ${alertFilter === key ? cls : ''}`}
+                  onClick={() => setAlertFilter(key)}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        }
+      >
+        <Table
+          dataSource={filteredAlerts}
+          rowKey="id"
+          size="small"
+          pagination={false}
+          className="teal-table"
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No alerts" /> }}
+          columns={[
+            {
+              title: <span className="label-caps">Level</span>,
+              dataIndex: 'level',
+              width: 110,
+              render: (l: string, a: any) => {
+                if (a.acknowledged) {
+                  return (
+                    <Tag style={{ background: '#F3F2FF', color: '#7F77DD', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 11 }}>
+                      ACKNOWLEDGED
+                    </Tag>
+                  );
+                }
+                const isC = l === 'CRITICAL';
+                return (
+                  <Tag
+                    style={{
+                      background: isC ? '#FEF2F2' : '#FFFBEB',
+                      color: isC ? '#E24B4A' : '#EF9F27',
+                      border: 'none',
+                      borderRadius: 6,
+                      fontWeight: 600,
+                      fontSize: 11,
+                    }}
+                  >
+                    {l}
+                  </Tag>
+                );
+              },
+            },
+            {
+              title: <span className="label-caps">Message</span>,
+              dataIndex: 'message',
+              ellipsis: true,
+            },
+            {
+              title: <span className="label-caps">Time</span>,
+              dataIndex: 'createdAt',
+              width: 160,
+              render: (d: string) => (
+                <span style={{ color: '#64748B', fontSize: 12 }}>
+                  {new Date(d).toLocaleString()}
+                </span>
+              ),
+            },
+          ]}
+        />
+      </Card>
     </div>
   );
 }

@@ -30,17 +30,19 @@ export default function App() {
         path="*"
         element={
           <PrivateRoute>
-            <Layout style={{ minHeight: '100vh' }}>
+            <Layout style={{ minHeight: '100vh', background: '#F8FAFC' }}>
               <AppHeader />
-              <Content style={{ padding: '24px', maxWidth: 1400, margin: '0 auto', width: '100%' }}>
-                <Routes>
-                  <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                  <Route path="/dashboard" element={<DashboardPage />} />
-                  <Route path="/patients" element={<PatientsPage />} />
-                  <Route path="/patients/:id" element={<PatientDetailPage />} />
-                  <Route path="/sessions/:id" element={<SessionDetailPage />} />
-                  <Route path="/doctors" element={<AdminRoute><DoctorsPage /></AdminRoute>} />
-                </Routes>
+              <Content>
+                <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 40px', width: '100%' }}>
+                  <Routes>
+                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
+                    <Route path="/dashboard" element={<DashboardPage />} />
+                    <Route path="/patients" element={<PatientsPage />} />
+                    <Route path="/patients/:id" element={<PatientDetailPage />} />
+                    <Route path="/sessions/:id" element={<SessionDetailPage />} />
+                    <Route path="/doctors" element={<AdminRoute><DoctorsPage /></AdminRoute>} />
+                  </Routes>
+                </div>
               </Content>
             </Layout>
           </PrivateRoute>
