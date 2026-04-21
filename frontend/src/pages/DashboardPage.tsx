@@ -4,6 +4,8 @@ import {
   MonitorOutlined,
   AlertOutlined,
   ExclamationCircleOutlined,
+  SortAscendingOutlined,
+  SortDescendingOutlined,
 } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchActiveSessions } from '../api/sessions';
@@ -70,6 +72,7 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
   const { on } = useSocket();
   const [alertFilter, setAlertFilter] = useState<AlertFilter>('ALL');
+  const [sortDesc, setSortDesc] = useState(true);
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ['activeSessions'],
@@ -110,12 +113,13 @@ export default function DashboardPage() {
   const criticalCount = alerts.filter((a) => a.level === 'CRITICAL').length;
   const warningCount = alerts.filter((a) => a.level === 'WARNING').length;
 
-  const filteredAlerts = alerts.filter((a) => {
-    if (alertFilter === 'ALL') return true;
-    if (alertFilter === 'CRITICAL') return a.level === 'CRITICAL';
-    if (alertFilter === 'WARNING') return a.level === 'WARNING';
-    return true;
-  }).slice(0, 10);
+  const filteredAlerts = alerts
+    .filter((a) => alertFilter === 'ALL' || a.level === alertFilter)
+    .sort((a, b) => {
+      const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return sortDesc ? diff : -diff;
+    })
+    .slice(0, 10);
 
   const filterButtons: { key: AlertFilter; label: string; cls: string }[] = [
     { key: 'ALL', label: `All (${alerts.length})`, cls: 'f-all' },
@@ -168,7 +172,6 @@ export default function DashboardPage() {
         styles={{ body: { padding: 20 } }}
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="pulse-dot-wrap"><div className="pulse-dot-inner" /></div>
             <span style={{ fontSize: 15, fontWeight: 600, color: '#0F172A' }}>Active Sessions</span>
             <span
               style={{
@@ -264,6 +267,15 @@ export default function DashboardPage() {
                   {label}
                 </button>
               ))}
+              <button
+                className="filter-btn"
+                onClick={() => setSortDesc((v) => !v)}
+                title={sortDesc ? 'Newest first' : 'Oldest first'}
+                style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                {sortDesc ? <SortDescendingOutlined /> : <SortAscendingOutlined />}
+                {sortDesc ? 'Newest' : 'Oldest'}
+              </button>
             </div>
           </div>
         }

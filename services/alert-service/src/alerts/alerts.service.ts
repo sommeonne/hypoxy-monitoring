@@ -23,9 +23,10 @@ export class AlertsService {
     return saved;
   }
 
-  findAll(patientId?: string): Promise<Alert[]> {
+  findAll(patientId?: string, sessionId?: string): Promise<Alert[]> {
     const where: any = {};
     if (patientId) where.patientId = patientId;
+    if (sessionId) where.sessionId = sessionId;
     return this.repo.find({ where, order: { createdAt: 'DESC' } });
   }
 

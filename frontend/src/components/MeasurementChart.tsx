@@ -87,6 +87,14 @@ export default function MeasurementChart({ measurements }: Props) {
           axisLine={false}
         />
 
+        {/* Respiratory rate axis (right, hidden ticks — shares visual space with hr) */}
+        <YAxis
+          yAxisId="rr"
+          domain={[0, 60]}
+          orientation="right"
+          hide
+        />
+
         <Tooltip content={<CustomTooltip />} />
         <Legend
           wrapperStyle={{ fontSize: 12, paddingTop: 8 }}
@@ -118,7 +126,6 @@ export default function MeasurementChart({ measurements }: Props) {
           stroke="#E24B4A"
           strokeDasharray="5 4"
           strokeWidth={1.5}
-          label={{ value: '85%', position: 'left', fontSize: 10, fill: '#E24B4A' }}
         />
         <ReferenceLine
           yAxisId="spo2"
@@ -126,7 +133,6 @@ export default function MeasurementChart({ measurements }: Props) {
           stroke="#EF9F27"
           strokeDasharray="5 4"
           strokeWidth={1.5}
-          label={{ value: '90%', position: 'left', fontSize: 10, fill: '#EF9F27' }}
         />
 
         {/* ── Data lines ── */}
@@ -151,7 +157,7 @@ export default function MeasurementChart({ measurements }: Props) {
           activeDot={{ r: 4, fill: '#E24B4A' }}
         />
         <Line
-          yAxisId="spo2"
+          yAxisId="rr"
           type="monotone"
           dataKey="respiratoryRate"
           stroke="#7F77DD"

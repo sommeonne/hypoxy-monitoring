@@ -19,9 +19,13 @@ export class AlertsController {
   @Get()
   @ApiOperation({ summary: 'Get all alerts with optional filters' })
   @ApiQuery({ name: 'patientId', required: false })
+  @ApiQuery({ name: 'sessionId', required: false })
   @ApiResponse({ status: 200, type: [Alert] })
-  findAll(@Query('patientId') patientId?: string): Promise<Alert[]> {
-    return this.alertsService.findAll(patientId);
+  findAll(
+    @Query('patientId') patientId?: string,
+    @Query('sessionId') sessionId?: string,
+  ): Promise<Alert[]> {
+    return this.alertsService.findAll(patientId, sessionId);
   }
 
   @Get('patient/:patientId')

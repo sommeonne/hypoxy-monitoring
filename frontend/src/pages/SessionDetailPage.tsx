@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Button, Tag, Table, Typography, Row, Col, Descriptions, Spin } from 'antd';
-import { DownloadOutlined, StopOutlined } from '@ant-design/icons';
+import { DownloadOutlined, StopOutlined, SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSession, endSession } from '../api/sessions';
 import { fetchSessionMeasurements, Measurement } from '../api/measurements';
@@ -11,6 +11,8 @@ import MeasurementChart from '../components/MeasurementChart';
 import VitalSign from '../components/VitalSign';
 
 const { Text } = Typography;
+
+type AlertFilter = 'ALL' | 'CRITICAL' | 'WARNING';
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -41,6 +43,8 @@ export default function SessionDetailPage() {
   const queryClient = useQueryClient();
   const { on } = useSocket();
   const [liveData, setLiveData] = useState<Measurement[]>([]);
+  const [alertFilter, setAlertFilter] = useState<AlertFilter>('ALL');
+  const [sortDesc, setSortDesc] = useState(true);
 
   const { data: session, isLoading } = useQuery({
     queryKey: ['session', id],
@@ -55,9 +59,9 @@ export default function SessionDetailPage() {
   });
 
   const { data: alerts = [] } = useQuery({
-    queryKey: ['sessionAlerts', id, session?.patientId],
-    queryFn: () => fetchAlerts({ patientId: session!.patientId }),
-    enabled: !!session?.patientId,
+    queryKey: ['sessionAlerts', id],
+    queryFn: () => fetchAlerts({ sessionId: id! }),
+    enabled: !!id,
   });
 
   useEffect(() => {
@@ -96,6 +100,22 @@ export default function SessionDetailPage() {
 
   const displayData = liveData.length > 0 ? liveData : measurements;
   const latest = displayData[0];
+
+  const criticalCount = alerts.filter((a) => a.level === 'CRITICAL').length;
+  const warningCount = alerts.filter((a) => a.level === 'WARNING').length;
+
+  const filteredAlerts = alerts
+    .filter((a) => alertFilter === 'ALL' || a.level === alertFilter)
+    .sort((a, b) => {
+      const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return sortDesc ? diff : -diff;
+    });
+
+  const alertFilterButtons: { key: AlertFilter; label: string; cls: string }[] = [
+    { key: 'ALL', label: `All (${alerts.length})`, cls: 'f-all' },
+    { key: 'CRITICAL', label: `Critical (${criticalCount})`, cls: 'f-critical' },
+    { key: 'WARNING', label: `Warning (${warningCount})`, cls: 'f-warning' },
+  ];
 
   const isActive = session.status === 'active';
 
@@ -190,7 +210,7 @@ export default function SessionDetailPage() {
                 <>
                   <Descriptions.Item label="Duration">{session.summary.durationMinutes} min</Descriptions.Item>
                   <Descriptions.Item label="Measurements">{session.summary.totalMeasurements}</Descriptions.Item>
-                  <Descriptions.Item label="Alerts">{session.summary.alertCount}</Descriptions.Item>
+                  <Descriptions.Item label="Alerts">{alerts.length}</Descriptions.Item>
                 </>
               )}
             </Descriptions>
@@ -238,27 +258,49 @@ export default function SessionDetailPage() {
       {/* Alerts table */}
       <Card
         title={
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <SectionTitle>Alerts</SectionTitle>
-            <span
-              style={{
-                background: alerts.length > 0 ? '#FEF2F2' : '#F1F5F9',
-                color: alerts.length > 0 ? '#E24B4A' : '#64748B',
-                borderRadius: 20,
-                padding: '1px 10px',
-                fontSize: 12,
-                fontWeight: 600,
-              }}
-            >
-              {alerts.length}
-            </span>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <SectionTitle>Alerts</SectionTitle>
+              <span
+                style={{
+                  background: alerts.length > 0 ? '#FEF2F2' : '#F1F5F9',
+                  color: alerts.length > 0 ? '#E24B4A' : '#64748B',
+                  borderRadius: 20,
+                  padding: '1px 10px',
+                  fontSize: 12,
+                  fontWeight: 600,
+                }}
+              >
+                {alerts.length}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              {alertFilterButtons.map(({ key, label, cls }) => (
+                <button
+                  key={key}
+                  className={`filter-btn ${alertFilter === key ? cls : ''}`}
+                  onClick={() => setAlertFilter(key)}
+                >
+                  {label}
+                </button>
+              ))}
+              <button
+                className="filter-btn"
+                onClick={() => setSortDesc((v) => !v)}
+                title={sortDesc ? 'Newest first' : 'Oldest first'}
+                style={{ display: 'flex', alignItems: 'center', gap: 4 }}
+              >
+                {sortDesc ? <SortDescendingOutlined /> : <SortAscendingOutlined />}
+                {sortDesc ? 'Newest' : 'Oldest'}
+              </button>
+            </div>
           </div>
         }
         style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
         styles={{ body: { padding: 20 } }}
       >
         <Table
-          dataSource={alerts}
+          dataSource={filteredAlerts}
           rowKey="id"
           size="small"
           pagination={{ pageSize: 10 }}
