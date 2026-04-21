@@ -66,7 +66,6 @@ export class ExcelGeneratorService {
       { header: 'Timestamp', key: 'createdAt', width: 25 },
       { header: 'Level', key: 'level', width: 12 },
       { header: 'Message', key: 'message', width: 50 },
-      { header: 'Acknowledged', key: 'acknowledged', width: 15 },
     ];
     alertSheet.getRow(1).font = { bold: true };
     alerts.forEach((a) => {
@@ -74,7 +73,6 @@ export class ExcelGeneratorService {
         createdAt: new Date(a.createdAt).toLocaleString(),
         level: a.level,
         message: a.message,
-        acknowledged: a.acknowledged ? 'Yes' : 'No',
       });
       if (a.level === 'CRITICAL') {
         row.getCell('level').font = { color: { argb: 'FFFF0000' }, bold: true };

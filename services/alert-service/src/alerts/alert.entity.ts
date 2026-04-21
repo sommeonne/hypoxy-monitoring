@@ -37,10 +37,6 @@ export class Alert {
   values: Record<string, number>;
 
   @ApiProperty()
-  @Column({ default: false })
-  acknowledged: boolean;
-
-  @ApiProperty()
   @CreateDateColumn()
   createdAt: Date;
 }

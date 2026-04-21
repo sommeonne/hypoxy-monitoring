@@ -95,7 +95,6 @@ body {
 .filter-btn.f-all          { background: var(--teal);   color: #fff; border-color: var(--teal); }
 .filter-btn.f-critical     { background: var(--red);    color: #fff; border-color: var(--red); }
 .filter-btn.f-warning      { background: var(--amber);  color: #fff; border-color: var(--amber); }
-.filter-btn.f-acknowledged { background: var(--purple); color: #fff; border-color: var(--purple); }
 
 /* ── Table row hover ───────────────────────────────────────────── */
 .teal-table .ant-table-tbody > tr:hover > td {

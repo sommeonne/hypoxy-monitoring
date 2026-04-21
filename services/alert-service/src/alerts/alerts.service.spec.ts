@@ -1,6 +1,5 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { NotFoundException } from '@nestjs/common';
 import { AlertsService } from './alerts.service';
 import { Alert, AlertLevel } from './alert.entity';
 import { AlertsGateway } from './alerts.gateway';
@@ -33,7 +32,7 @@ describe('AlertsService', () => {
       message: 'SpO2 critically low',
       values: { spo2: 85 },
     };
-    const alert = { ...dto, id: 'a-uuid', acknowledged: false, createdAt: new Date() };
+    const alert = { ...dto, id: 'a-uuid', createdAt: new Date() };
     mockRepo.create.mockReturnValue(alert);
     mockRepo.save.mockResolvedValue(alert);
     const result = await service.create(dto);
@@ -41,8 +40,4 @@ describe('AlertsService', () => {
     expect(mockGateway.broadcastAlert).toHaveBeenCalledWith(alert);
   });
 
-  it('should throw when acknowledging non-existent alert', async () => {
-    mockRepo.findOne.mockResolvedValue(null);
-    await expect(service.acknowledge('bad-id')).rejects.toThrow(NotFoundException);
-  });
 });

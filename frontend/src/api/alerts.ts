@@ -8,20 +8,10 @@ export interface Alert {
   level: 'CRITICAL' | 'WARNING';
   message: string;
   values: Record<string, number>;
-  acknowledged: boolean;
   createdAt: string;
 }
 
-export const fetchAlerts = (params?: { patientId?: string; acknowledged?: boolean }) => {
-  const qs = params
-    ? '?' + new URLSearchParams(
-        Object.entries(params)
-          .filter(([, v]) => v !== undefined)
-          .map(([k, v]) => [k, String(v)]),
-      ).toString()
-    : '';
+export const fetchAlerts = (params?: { patientId?: string }) => {
+  const qs = params?.patientId ? `?patientId=${params.patientId}` : '';
   return api.get<Alert[]>(`/alerts${qs}`);
 };
-
-export const fetchUnacknowledgedAlerts = () => api.get<Alert[]>('/alerts/unacknowledged');
-export const acknowledgeAlert = (id: string) => api.put<Alert>(`/alerts/${id}/acknowledge`);

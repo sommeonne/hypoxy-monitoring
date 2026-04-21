@@ -1,11 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Button, Tag, Table, Typography, Row, Col, Descriptions, Spin } from 'antd';
-import { DownloadOutlined, StopOutlined, CheckOutlined } from '@ant-design/icons';
+import { DownloadOutlined, StopOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSession, endSession } from '../api/sessions';
 import { fetchSessionMeasurements, Measurement } from '../api/measurements';
-import { fetchAlerts, acknowledgeAlert, Alert } from '../api/alerts';
+import { fetchAlerts, Alert } from '../api/alerts';
 import { useSocket } from '../hooks/useSocket';
 import MeasurementChart from '../components/MeasurementChart';
 import VitalSign from '../components/VitalSign';
@@ -18,14 +18,7 @@ function SectionTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function LevelTag({ level, acknowledged }: { level: string; acknowledged: boolean }) {
-  if (acknowledged) {
-    return (
-      <Tag style={{ background: '#F3F2FF', color: '#7F77DD', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 11 }}>
-        ACKNOWLEDGED
-      </Tag>
-    );
-  }
+function LevelTag({ level }: { level: string }) {
   const isC = level === 'CRITICAL';
   return (
     <Tag
@@ -88,11 +81,6 @@ export default function SessionDetailPage() {
       return endSession(id!, summary);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['session', id] }),
-  });
-
-  const ackMutation = useMutation({
-    mutationFn: acknowledgeAlert,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['sessionAlerts'] }),
   });
 
   useEffect(() => {
@@ -254,8 +242,8 @@ export default function SessionDetailPage() {
             <SectionTitle>Alerts</SectionTitle>
             <span
               style={{
-                background: alerts.filter((a) => !a.acknowledged).length > 0 ? '#FEF2F2' : '#F1F5F9',
-                color: alerts.filter((a) => !a.acknowledged).length > 0 ? '#E24B4A' : '#64748B',
+                background: alerts.length > 0 ? '#FEF2F2' : '#F1F5F9',
+                color: alerts.length > 0 ? '#E24B4A' : '#64748B',
                 borderRadius: 20,
                 padding: '1px 10px',
                 fontSize: 12,
@@ -280,7 +268,7 @@ export default function SessionDetailPage() {
               title: <span className="label-caps">Level</span>,
               dataIndex: 'level',
               width: 130,
-              render: (l: string, a: Alert) => <LevelTag level={l} acknowledged={a.acknowledged} />,
+              render: (l: string) => <LevelTag level={l} />,
             },
             {
               title: <span className="label-caps">Message</span>,
@@ -296,51 +284,6 @@ export default function SessionDetailPage() {
                   {new Date(d).toLocaleString()}
                 </span>
               ),
-            },
-            {
-              title: <span className="label-caps">Acknowledged by</span>,
-              width: 160,
-              render: (_: any, a: Alert) => (
-                <span style={{ color: '#94A3B8', fontSize: 12 }}>
-                  {a.acknowledged ? '— ' : '—'}
-                </span>
-              ),
-            },
-            {
-              title: '',
-              width: 140,
-              render: (_: any, a: Alert) =>
-                a.acknowledged ? (
-                  <span
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 4,
-                      padding: '3px 10px',
-                      borderRadius: 6,
-                      background: '#F3F2FF',
-                      color: '#7F77DD',
-                      fontSize: 12,
-                      fontWeight: 600,
-                    }}
-                  >
-                    <CheckOutlined style={{ fontSize: 10 }} /> Acknowledged
-                  </span>
-                ) : (
-                  <Button
-                    size="small"
-                    loading={ackMutation.isPending && ackMutation.variables === a.id}
-                    onClick={() => ackMutation.mutate(a.id)}
-                    style={{
-                      borderRadius: 6,
-                      borderColor: '#E2E8F0',
-                      fontSize: 12,
-                      fontWeight: 500,
-                    }}
-                  >
-                    Acknowledge
-                  </Button>
-                ),
             },
           ]}
         />

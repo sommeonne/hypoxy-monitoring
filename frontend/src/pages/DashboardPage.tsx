@@ -4,18 +4,17 @@ import {
   MonitorOutlined,
   AlertOutlined,
   ExclamationCircleOutlined,
-  CheckCircleOutlined,
 } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchActiveSessions } from '../api/sessions';
 import { fetchPatients } from '../api/patients';
-import { fetchUnacknowledgedAlerts, fetchAlerts, Alert } from '../api/alerts';
+import { fetchAlerts, Alert } from '../api/alerts';
 import { useSocket } from '../hooks/useSocket';
 import { useNavigate } from 'react-router-dom';
 
 const { Text } = Typography;
 
-type AlertFilter = 'ALL' | 'CRITICAL' | 'WARNING' | 'ACKNOWLEDGED';
+type AlertFilter = 'ALL' | 'CRITICAL' | 'WARNING';
 
 function StatCard({
   label,
@@ -87,16 +86,10 @@ export default function DashboardPage() {
     patients.map((p) => [p.id, `${p.firstName} ${p.lastName}`]),
   );
 
-  const { data: unacknowledgedAlerts = [] } = useQuery({
-    queryKey: ['unacknowledgedAlerts'],
-    queryFn: fetchUnacknowledgedAlerts,
+  const { data: alerts = [] } = useQuery({
+    queryKey: ['alerts'],
+    queryFn: () => fetchAlerts(),
     refetchInterval: 15_000,
-  });
-
-  const { data: acknowledgedAlerts = [] } = useQuery({
-    queryKey: ['acknowledgedAlerts'],
-    queryFn: () => fetchAlerts({ acknowledged: true }),
-    refetchInterval: 30_000,
   });
 
   useEffect(() => {
@@ -104,7 +97,7 @@ export default function DashboardPage() {
       queryClient.invalidateQueries({ queryKey: ['activeSessions'] }),
     );
     const offA = on('alert:new', () =>
-      queryClient.invalidateQueries({ queryKey: ['unacknowledgedAlerts'] }),
+      queryClient.invalidateQueries({ queryKey: ['alerts'] }),
     );
     const offS = on('session:updated', () =>
       queryClient.invalidateQueries({ queryKey: ['activeSessions'] }),
@@ -114,28 +107,20 @@ export default function DashboardPage() {
 
   if (isLoading) return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
 
-  const criticalCount = unacknowledgedAlerts.filter((a) => a.level === 'CRITICAL').length;
-  const warningCount = unacknowledgedAlerts.filter((a) => a.level === 'WARNING').length;
-  const acknowledgedCount = acknowledgedAlerts.length;
+  const criticalCount = alerts.filter((a) => a.level === 'CRITICAL').length;
+  const warningCount = alerts.filter((a) => a.level === 'WARNING').length;
 
-  const allAlerts: (Alert & { _acknowledged?: boolean })[] = [
-    ...unacknowledgedAlerts,
-    ...acknowledgedAlerts.map((a) => ({ ...a, _acknowledged: true })),
-  ];
-
-  const filteredAlerts = allAlerts.filter((a) => {
+  const filteredAlerts = alerts.filter((a) => {
     if (alertFilter === 'ALL') return true;
-    if (alertFilter === 'CRITICAL') return a.level === 'CRITICAL' && !a.acknowledged;
-    if (alertFilter === 'WARNING') return a.level === 'WARNING' && !a.acknowledged;
-    if (alertFilter === 'ACKNOWLEDGED') return a.acknowledged;
+    if (alertFilter === 'CRITICAL') return a.level === 'CRITICAL';
+    if (alertFilter === 'WARNING') return a.level === 'WARNING';
     return true;
   }).slice(0, 10);
 
   const filterButtons: { key: AlertFilter; label: string; cls: string }[] = [
-    { key: 'ALL', label: `All (${unacknowledgedAlerts.length + acknowledgedCount})`, cls: 'f-all' },
+    { key: 'ALL', label: `All (${alerts.length})`, cls: 'f-all' },
     { key: 'CRITICAL', label: `Critical (${criticalCount})`, cls: 'f-critical' },
     { key: 'WARNING', label: `Warning (${warningCount})`, cls: 'f-warning' },
-    { key: 'ACKNOWLEDGED', label: `Acknowledged (${acknowledgedCount})`, cls: 'f-acknowledged' },
   ];
 
   return (
@@ -148,7 +133,7 @@ export default function DashboardPage() {
 
       {/* Stat cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 28 }}>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <StatCard
             label="Active Sessions"
             value={sessions.length}
@@ -157,7 +142,7 @@ export default function DashboardPage() {
             bg="#E1F5EE"
           />
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <StatCard
             label="Critical Alerts"
             value={criticalCount}
@@ -166,22 +151,13 @@ export default function DashboardPage() {
             bg="#FEF2F2"
           />
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <StatCard
             label="Warning Alerts"
             value={warningCount}
             icon={<ExclamationCircleOutlined />}
             accent="#EF9F27"
             bg="#FFFBEB"
-          />
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <StatCard
-            label="Acknowledged"
-            value={acknowledgedCount}
-            icon={<CheckCircleOutlined />}
-            accent="#7F77DD"
-            bg="#F3F2FF"
           />
         </Col>
       </Row>
@@ -304,14 +280,7 @@ export default function DashboardPage() {
               title: <span className="label-caps">Level</span>,
               dataIndex: 'level',
               width: 110,
-              render: (l: string, a: any) => {
-                if (a.acknowledged) {
-                  return (
-                    <Tag style={{ background: '#F3F2FF', color: '#7F77DD', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: 11 }}>
-                      ACKNOWLEDGED
-                    </Tag>
-                  );
-                }
+              render: (l: string) => {
                 const isC = l === 'CRITICAL';
                 return (
                   <Tag
