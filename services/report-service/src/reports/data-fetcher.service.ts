@@ -36,8 +36,8 @@ export class DataFetcherService {
     return res.data;
   }
 
-  async getAlertsByPatient(patientId: string): Promise<any[]> {
-    const res = await axios.get(`${this.alertUrl}/alerts/patient/${patientId}`);
+  async getAlertsBySession(sessionId: string): Promise<any[]> {
+    const res = await axios.get(`${this.alertUrl}/alerts?sessionId=${sessionId}`);
     return res.data;
   }
 }

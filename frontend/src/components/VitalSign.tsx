@@ -5,11 +5,30 @@ interface Props {
   spo2: number;
   heartRate: number;
   respiratoryRate: number;
+  hypoxiaIndex?: number;
 }
 
-function getSpo2Color(spo2: number): string {
-  if (spo2 < 90) return '#E24B4A';
-  if (spo2 < 94) return '#EF9F27';
+function getSpo2Color(v: number): string {
+  if (v < 90) return '#E24B4A';
+  if (v < 94) return '#EF9F27';
+  return '#1D9E75';
+}
+
+function getHeartRateColor(v: number): string {
+  if (v < 50 || v > 120) return '#E24B4A';
+  if (v < 60 || v > 100) return '#EF9F27';
+  return '#1D9E75';
+}
+
+function getRespRateColor(v: number): string {
+  if (v < 8 || v > 30) return '#E24B4A';
+  if (v < 12 || v > 20) return '#EF9F27';
+  return '#1D9E75';
+}
+
+function getHypoxiaColor(v: number): string {
+  if (v >= 6) return '#E24B4A';
+  if (v >= 3) return '#EF9F27';
   return '#1D9E75';
 }
 
@@ -28,7 +47,7 @@ function VitalCard({
   color,
 }: {
   label: string;
-  value: number;
+  value: number | string;
   unit: string;
   icon?: React.ReactNode;
   large?: boolean;
@@ -67,32 +86,47 @@ function VitalCard({
   );
 }
 
-export default function VitalSign({ spo2, heartRate, respiratoryRate }: Props) {
-  const spo2Color = getSpo2Color(spo2);
-  const { label, bg, color } = getSpo2Status(spo2);
+function getHypoxiaStatus(v: number): { label: string; bg: string; color: string } {
+  if (v >= 6) return { label: 'CRITICAL', bg: '#FEF2F2', color: '#E24B4A' };
+  if (v >= 3) return { label: 'WARNING', bg: '#FFFBEB', color: '#EF9F27' };
+  return { label: 'NORMAL', bg: '#E1F5EE', color: '#1D9E75' };
+}
+
+export default function VitalSign({ spo2, heartRate, respiratoryRate, hypoxiaIndex }: Props) {
+  const { label, bg, color } = hypoxiaIndex !== undefined
+    ? getHypoxiaStatus(hypoxiaIndex)
+    : getSpo2Status(spo2);
 
   return (
     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      {/* SpO2 — large, colour-coded */}
-      <VitalCard label="SpO₂" value={spo2} unit="%" large color={spo2Color} />
+      {hypoxiaIndex !== undefined && (
+        <VitalCard
+          label="Hypoxia Index"
+          value={hypoxiaIndex}
+          unit="/ 10"
+          large
+          color={getHypoxiaColor(hypoxiaIndex)}
+        />
+      )}
 
-      {/* Heart Rate */}
+      <VitalCard label="SpO₂" value={spo2} unit="%" color={getSpo2Color(spo2)} />
+
       <VitalCard
         label="Heart Rate"
         value={heartRate}
         unit="bpm"
-        icon={<HeartOutlined style={{ color: '#E24B4A' }} />}
+        icon={<HeartOutlined style={{ color: getHeartRateColor(heartRate) }} />}
+        color={getHeartRateColor(heartRate)}
       />
 
-      {/* Respiratory Rate */}
       <VitalCard
         label="Resp. Rate"
         value={respiratoryRate}
         unit="/min"
-        icon={<ThunderboltOutlined style={{ color: '#94A3B8' }} />}
+        icon={<ThunderboltOutlined style={{ color: getRespRateColor(respiratoryRate) }} />}
+        color={getRespRateColor(respiratoryRate)}
       />
 
-      {/* Status badge */}
       <div
         style={{
           alignSelf: 'flex-end',

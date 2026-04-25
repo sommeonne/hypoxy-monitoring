@@ -84,26 +84,36 @@ export class AnalysisService {
   }
 
   computeHypoxiaIndex(measurement: Measurement): number {
-    const spo2Dev = Math.max(0, 100 - measurement.spo2) / 10;
-    const hrDev =
-      measurement.heartRate < THRESHOLDS.heartRate.min
-        ? (THRESHOLDS.heartRate.min - measurement.heartRate) / THRESHOLDS.heartRate.min
-        : measurement.heartRate > THRESHOLDS.heartRate.max
-        ? (measurement.heartRate - THRESHOLDS.heartRate.max) / THRESHOLDS.heartRate.max
-        : 0;
-    const rrDev =
-      measurement.respiratoryRate < THRESHOLDS.respiratoryRate.min
-        ? (THRESHOLDS.respiratoryRate.min - measurement.respiratoryRate) /
-          THRESHOLDS.respiratoryRate.min
-        : measurement.respiratoryRate > THRESHOLDS.respiratoryRate.max
-        ? (measurement.respiratoryRate - THRESHOLDS.respiratoryRate.max) /
-          THRESHOLDS.respiratoryRate.max
-        : 0;
-
+    const spo2Score = this.scoreSpo2(measurement.spo2);
+    const hrScore = this.scoreHeartRate(measurement.heartRate);
+    const rrScore = this.scoreRespRate(measurement.respiratoryRate);
     return Math.min(
       10,
-      parseFloat((spo2Dev * 0.6 + hrDev * 0.25 + rrDev * 0.15).toFixed(2)),
+      parseFloat((spo2Score * 0.6 + hrScore * 0.25 + rrScore * 0.15).toFixed(2)),
     );
+  }
+
+  private scoreSpo2(v: number): number {
+    if (v >= 94) return 0;
+    if (v >= 90) return ((94 - v) / 4) * 5;
+    if (v >= 85) return 5 + ((90 - v) / 5) * 3;
+    return Math.min(10, 8 + ((85 - v) / 5) * 2);
+  }
+
+  private scoreHeartRate(v: number): number {
+    if (v >= 60 && v <= 100) return 0;
+    if (v >= 50) return ((60 - v) / 10) * 5;
+    if (v <= 120) return ((v - 100) / 20) * 5;
+    if (v < 50) return Math.min(10, 5 + ((50 - v) / 20) * 5);
+    return Math.min(10, 5 + ((v - 120) / 40) * 5);
+  }
+
+  private scoreRespRate(v: number): number {
+    if (v >= 12 && v <= 20) return 0;
+    if (v >= 8 && v < 12) return ((12 - v) / 4) * 5;
+    if (v > 20 && v <= 30) return ((v - 20) / 10) * 5;
+    if (v < 8) return Math.min(10, 5 + ((8 - v) / 8) * 5);
+    return Math.min(10, 5 + ((v - 30) / 20) * 5);
   }
 
   private async sendAlert(result: AnalysisResult): Promise<void> {

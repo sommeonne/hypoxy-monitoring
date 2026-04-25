@@ -15,26 +15,22 @@ export class ReportsService {
   ) {}
 
   async generateSessionPdf(sessionId: string): Promise<Buffer> {
-    const [session, measurements] = await Promise.all([
+    const [session, measurements, alerts] = await Promise.all([
       this.dataFetcher.getSession(sessionId),
       this.dataFetcher.getMeasurements(sessionId),
+      this.dataFetcher.getAlertsBySession(sessionId),
     ]);
-    const [patient, alerts] = await Promise.all([
-      this.dataFetcher.getPatient(session.patientId),
-      this.dataFetcher.getAlertsByPatient(session.patientId),
-    ]);
+    const patient = await this.dataFetcher.getPatient(session.patientId);
     return this.pdfGenerator.generateSessionReport(session, patient, measurements, alerts);
   }
 
   async generateSessionExcel(sessionId: string): Promise<Buffer> {
-    const [session, measurements] = await Promise.all([
+    const [session, measurements, alerts] = await Promise.all([
       this.dataFetcher.getSession(sessionId),
       this.dataFetcher.getMeasurements(sessionId),
+      this.dataFetcher.getAlertsBySession(sessionId),
     ]);
-    const [patient, alerts] = await Promise.all([
-      this.dataFetcher.getPatient(session.patientId),
-      this.dataFetcher.getAlertsByPatient(session.patientId),
-    ]);
+    const patient = await this.dataFetcher.getPatient(session.patientId);
     return this.excelGenerator.generateSessionReport(session, patient, measurements, alerts);
   }
 

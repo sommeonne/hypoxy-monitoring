@@ -36,3 +36,4 @@ export function getUsername(): string {
 export function logout(): void {
   localStorage.removeItem('access_token');
 }
+0

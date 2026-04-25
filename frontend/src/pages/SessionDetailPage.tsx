@@ -14,6 +14,34 @@ const { Text } = Typography;
 
 type AlertFilter = 'ALL' | 'CRITICAL' | 'WARNING';
 
+function scoreSpo2(v: number): number {
+  if (v >= 94) return 0;
+  if (v >= 90) return ((94 - v) / 4) * 5;
+  if (v >= 85) return 5 + ((90 - v) / 5) * 3;
+  return Math.min(10, 8 + ((85 - v) / 5) * 2);
+}
+
+function scoreHeartRate(v: number): number {
+  if (v >= 60 && v <= 100) return 0;
+  if (v >= 50 && v < 60) return ((60 - v) / 10) * 5;
+  if (v > 100 && v <= 120) return ((v - 100) / 20) * 5;
+  if (v < 50) return Math.min(10, 5 + ((50 - v) / 20) * 5);
+  return Math.min(10, 5 + ((v - 120) / 40) * 5);
+}
+
+function scoreRespRate(v: number): number {
+  if (v >= 12 && v <= 20) return 0;
+  if (v >= 8 && v < 12) return ((12 - v) / 4) * 5;
+  if (v > 20 && v <= 30) return ((v - 20) / 10) * 5;
+  if (v < 8) return Math.min(10, 5 + ((8 - v) / 8) * 5);
+  return Math.min(10, 5 + ((v - 30) / 20) * 5);
+}
+
+function computeHypoxiaIndex(m: { spo2: number; heartRate: number; respiratoryRate: number }): number {
+  const score = scoreSpo2(m.spo2) * 0.6 + scoreHeartRate(m.heartRate) * 0.25 + scoreRespRate(m.respiratoryRate) * 0.15;
+  return Math.min(10, parseFloat(score.toFixed(2)));
+}
+
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
     <span style={{ fontSize: 15, fontWeight: 600, color: '#0F172A' }}>{children}</span>
@@ -93,6 +121,14 @@ export default function SessionDetailPage() {
     });
   }, [on, id]);
 
+  useEffect(() => {
+    return on('alert:new', (a: Alert) => {
+      if (a.sessionId === id) {
+        queryClient.invalidateQueries({ queryKey: ['sessionAlerts', id] });
+      }
+    });
+  }, [on, id, queryClient]);
+
   if (isLoading)
     return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
   if (!session)
@@ -100,6 +136,7 @@ export default function SessionDetailPage() {
 
   const displayData = liveData.length > 0 ? liveData : measurements;
   const latest = displayData[0];
+  const hypoxiaIndex = latest ? computeHypoxiaIndex(latest) : undefined;
 
   const criticalCount = alerts.filter((a) => a.level === 'CRITICAL').length;
   const warningCount = alerts.filter((a) => a.level === 'WARNING').length;
@@ -228,6 +265,7 @@ export default function SessionDetailPage() {
                 spo2={latest.spo2}
                 heartRate={latest.heartRate}
                 respiratoryRate={latest.respiratoryRate}
+                hypoxiaIndex={hypoxiaIndex}
               />
             </Card>
           </Col>
@@ -239,18 +277,7 @@ export default function SessionDetailPage() {
         title={<SectionTitle>Measurements Chart</SectionTitle>}
         style={{ marginBottom: 16, borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
         styles={{ body: { padding: '8px 20px 20px' } }}
-        extra={
-          <div style={{ display: 'flex', gap: 16, fontSize: 11 }}>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 20, height: 2, background: '#EF9F27', display: 'inline-block', borderTop: '2px dashed #EF9F27' }} />
-              <span style={{ color: '#64748B' }}>90% threshold</span>
-            </span>
-            <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ width: 20, height: 2, display: 'inline-block', borderTop: '2px dashed #E24B4A' }} />
-              <span style={{ color: '#64748B' }}>85% critical</span>
-            </span>
-          </div>
-        }
+
       >
         <MeasurementChart measurements={displayData} />
       </Card>

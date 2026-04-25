@@ -77,7 +77,7 @@ export default function DashboardPage() {
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ['activeSessions'],
     queryFn: fetchActiveSessions,
-    refetchInterval: 10_000,
+    staleTime: Infinity,
   });
 
   const { data: patients = [] } = useQuery({
@@ -92,20 +92,27 @@ export default function DashboardPage() {
   const { data: alerts = [] } = useQuery({
     queryKey: ['alerts'],
     queryFn: () => fetchAlerts(),
-    refetchInterval: 15_000,
+    staleTime: Infinity,
   });
 
   useEffect(() => {
-    const offM = on('measurement:new', () =>
-      queryClient.invalidateQueries({ queryKey: ['activeSessions'] }),
-    );
-    const offA = on('alert:new', () =>
-      queryClient.invalidateQueries({ queryKey: ['alerts'] }),
-    );
-    const offS = on('session:updated', () =>
-      queryClient.invalidateQueries({ queryKey: ['activeSessions'] }),
-    );
-    return () => { offM(); offA(); offS(); };
+    const offS = on('session:updated', (session: any) => {
+      queryClient.setQueryData<any[]>(['activeSessions'], (prev = []) => {
+        if (session.status === 'active') {
+          const exists = prev.some((s) => s.id === session.id);
+          return exists
+            ? prev.map((s) => (s.id === session.id ? session : s))
+            : [...prev, session];
+        }
+        return prev.filter((s) => s.id !== session.id);
+      });
+    });
+
+    const offA = on('alert:new', (alert: Alert) => {
+      queryClient.setQueryData<Alert[]>(['alerts'], (prev = []) => [alert, ...prev]);
+    });
+
+    return () => { offS(); offA(); };
   }, [on, queryClient]);
 
   if (isLoading) return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
@@ -119,7 +126,7 @@ export default function DashboardPage() {
       const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
       return sortDesc ? diff : -diff;
     })
-    .slice(0, 10);
+;
 
   const filterButtons: { key: AlertFilter; label: string; cls: string }[] = [
     { key: 'ALL', label: `All (${alerts.length})`, cls: 'f-all' },
@@ -284,7 +291,7 @@ export default function DashboardPage() {
           dataSource={filteredAlerts}
           rowKey="id"
           size="small"
-          pagination={false}
+          pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total) => `${total} alerts` }}
           className="teal-table"
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No alerts" /> }}
           columns={[

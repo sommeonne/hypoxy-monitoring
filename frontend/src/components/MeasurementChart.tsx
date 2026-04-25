@@ -7,8 +7,6 @@ import {
   CartesianGrid,
   Tooltip,
   Legend,
-  ReferenceLine,
-  ReferenceArea,
   ResponsiveContainer,
 } from 'recharts';
 import { Measurement } from '../api/measurements';
@@ -87,7 +85,7 @@ export default function MeasurementChart({ measurements }: Props) {
           axisLine={false}
         />
 
-        {/* Respiratory rate axis (right, hidden ticks — shares visual space with hr) */}
+        {/* Respiratory rate axis (hidden, shares right side) */}
         <YAxis
           yAxisId="rr"
           domain={[0, 60]}
@@ -101,41 +99,7 @@ export default function MeasurementChart({ measurements }: Props) {
           formatter={(value) => <span style={{ color: '#64748B' }}>{value}</span>}
         />
 
-        {/* ── Critical zone: red transparent band below 85% ── */}
-        <ReferenceArea
-          yAxisId="spo2"
-          y1={80}
-          y2={85}
-          fill="#E24B4A"
-          fillOpacity={0.08}
-        />
-
-        {/* ── Warning zone: amber transparent band 85-90% ── */}
-        <ReferenceArea
-          yAxisId="spo2"
-          y1={85}
-          y2={90}
-          fill="#EF9F27"
-          fillOpacity={0.06}
-        />
-
-        {/* ── Threshold lines ── */}
-        <ReferenceLine
-          yAxisId="spo2"
-          y={85}
-          stroke="#E24B4A"
-          strokeDasharray="5 4"
-          strokeWidth={1.5}
-        />
-        <ReferenceLine
-          yAxisId="spo2"
-          y={90}
-          stroke="#EF9F27"
-          strokeDasharray="5 4"
-          strokeWidth={1.5}
-        />
-
-        {/* ── Data lines ── */}
+        {/* Data lines */}
         <Line
           yAxisId="spo2"
           type="monotone"
@@ -163,9 +127,8 @@ export default function MeasurementChart({ measurements }: Props) {
           stroke="#7F77DD"
           name="Resp. Rate"
           dot={false}
-          strokeWidth={1.5}
-          strokeDasharray="4 3"
-          activeDot={{ r: 3, fill: '#7F77DD' }}
+          strokeWidth={2}
+          activeDot={{ r: 4, fill: '#7F77DD' }}
         />
       </LineChart>
     </ResponsiveContainer>
