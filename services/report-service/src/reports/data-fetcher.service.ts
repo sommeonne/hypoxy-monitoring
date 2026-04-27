@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import axios from 'axios';
 
 @Injectable()
 export class DataFetcherService {
@@ -22,22 +21,22 @@ export class DataFetcherService {
   }
 
   async getSession(sessionId: string): Promise<any> {
-    const res = await axios.get(`${this.sessionUrl}/sessions/${sessionId}`);
-    return res.data;
+    const res = await fetch(`${this.sessionUrl}/sessions/${sessionId}`);
+    return res.json();
   }
 
   async getPatient(patientId: string): Promise<any> {
-    const res = await axios.get(`${this.patientUrl}/patients/${patientId}`);
-    return res.data;
+    const res = await fetch(`${this.patientUrl}/patients/${patientId}`);
+    return res.json();
   }
 
   async getMeasurements(sessionId: string): Promise<any[]> {
-    const res = await axios.get(`${this.deviceUrl}/devices/measurements/${sessionId}`);
-    return res.data;
+    const res = await fetch(`${this.deviceUrl}/devices/measurements/${sessionId}`);
+    return res.json();
   }
 
   async getAlertsBySession(sessionId: string): Promise<any[]> {
-    const res = await axios.get(`${this.alertUrl}/alerts?sessionId=${sessionId}`);
-    return res.data;
+    const res = await fetch(`${this.alertUrl}/alerts?sessionId=${sessionId}`);
+    return res.json();
   }
 }

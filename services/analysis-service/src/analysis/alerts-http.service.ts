@@ -1,6 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import axios from 'axios';
 import { AlertLevel } from './thresholds';
 
 export interface CreateAlertPayload {
@@ -22,7 +21,11 @@ export class AlertsHttpService {
   }
 
   async createAlert(payload: CreateAlertPayload): Promise<void> {
-    await axios.post(`${this.alertServiceUrl}/alerts`, payload);
+    await fetch(`${this.alertServiceUrl}/alerts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
     this.logger.log(`Alert sent: ${payload.level} for patient ${payload.patientId}`);
   }
 }
