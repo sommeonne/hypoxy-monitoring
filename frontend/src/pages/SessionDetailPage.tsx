@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, Button, Tag, Table, Typography, Row, Col, Descriptions, Spin } from 'antd';
-import { DownloadOutlined, StopOutlined, SortAscendingOutlined, SortDescendingOutlined } from '@ant-design/icons';
+import { Card, Button, Tag, Table, Typography, Row, Col, Descriptions, Spin, Input, Modal, message } from 'antd';
+import { DownloadOutlined, StopOutlined, SortAscendingOutlined, SortDescendingOutlined, FileTextOutlined, MailOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchSession, endSession } from '../api/sessions';
+import { fetchSession, endSession, updateSessionNotes } from '../api/sessions';
 import { fetchSessionMeasurements, Measurement } from '../api/measurements';
 import { fetchAlerts, Alert } from '../api/alerts';
 import { useSocket } from '../hooks/useSocket';
@@ -47,6 +47,9 @@ export default function SessionDetailPage() {
   const [hypoxiaIndex, setHypoxiaIndex] = useState<number | undefined>();
   const [alertFilter, setAlertFilter] = useState<AlertFilter>('ALL');
   const [sortDesc, setSortDesc] = useState(true);
+  const [noteText, setNoteText] = useState('');
+  const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
 
   const { data: session, isLoading } = useQuery({
     queryKey: ['session', id],
@@ -69,6 +72,18 @@ export default function SessionDetailPage() {
   useEffect(() => {
     if (measurements.length) setLiveData(measurements);
   }, [measurements]);
+
+  useEffect(() => {
+    if (session?.notes != null) setNoteText(session.notes);
+  }, [session?.notes]);
+
+  const notesMutation = useMutation({
+    mutationFn: () => updateSessionNotes(id!, noteText),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patientSessions'] });
+      setNoteModalOpen(false);
+    },
+  });
 
   const endMutation = useMutation({
     mutationFn: () => {
@@ -135,6 +150,26 @@ export default function SessionDetailPage() {
 
   const isActive = session.status === 'active';
 
+  async function sendReport(sessionId: string) {
+    setSendingEmail(true);
+    try {
+      const token = localStorage.getItem('access_token');
+      const res = await fetch(`/api/reports/session/${sessionId}/email`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error(text || res.statusText);
+      }
+      message.success('Report sent to patient email');
+    } catch (e: any) {
+      message.error(e?.message ?? 'Failed to send report');
+    } finally {
+      setSendingEmail(false);
+    }
+  }
+
   async function downloadReport(sessionId: string, format: 'pdf' | 'excel') {
     const token = localStorage.getItem('access_token');
     const res = await fetch(`/api/reports/session/${sessionId}/${format}`, {
@@ -186,6 +221,21 @@ export default function SessionDetailPage() {
           >
             Excel
           </Button>
+          <Button
+            icon={<MailOutlined />}
+            loading={sendingEmail}
+            style={{ borderColor: '#E2E8F0', color: '#374151' }}
+            onClick={() => sendReport(id!)}
+          >
+            Send Report
+          </Button>
+          <Button
+            icon={<FileTextOutlined />}
+            style={{ borderColor: '#E2E8F0', color: '#374151' }}
+            onClick={() => setNoteModalOpen(true)}
+          >
+            Note
+          </Button>
           {isActive && (
             <Button
               icon={<StopOutlined />}
@@ -203,6 +253,26 @@ export default function SessionDetailPage() {
           )}
         </div>
       </div>
+
+      <Modal
+        title={<span style={{ fontWeight: 700, fontSize: 16, color: '#0F172A' }}>Session Note</span>}
+        open={noteModalOpen}
+        onCancel={() => setNoteModalOpen(false)}
+        onOk={() => notesMutation.mutate()}
+        okText="Save Note"
+        confirmLoading={notesMutation.isPending}
+        okButtonProps={{ style: { background: '#1D9E75', borderColor: '#1D9E75', fontWeight: 600 } }}
+        destroyOnClose={false}
+        centered
+      >
+        <Input.TextArea
+          value={noteText}
+          onChange={(e) => setNoteText(e.target.value)}
+          placeholder="Add session notes here…"
+          autoSize={{ minRows: 4, maxRows: 12 }}
+          style={{ fontSize: 14, color: '#0F172A', resize: 'none', marginTop: 8 }}
+        />
+      </Modal>
 
       {/* Session info + latest vitals */}
       <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
@@ -349,6 +419,7 @@ export default function SessionDetailPage() {
           ]}
         />
       </Card>
+
     </div>
   );
 }

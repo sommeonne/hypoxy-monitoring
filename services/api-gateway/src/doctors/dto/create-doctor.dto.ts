@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsString, IsNotEmpty, MinLength, IsOptional, IsIn } from 'class-validator';
+import { IsString, IsNotEmpty, MinLength, IsOptional, IsIn, IsEmail } from 'class-validator';
 
 export class CreateDoctorDto {
   @ApiProperty({ example: 'jsmith' })
@@ -21,6 +21,15 @@ export class CreateDoctorDto {
   @IsString()
   @MinLength(6)
   password: string;
+
+  @ApiProperty({ example: 'doctor@hospital.com' })
+  @IsEmail()
+  email: string;
+
+  @ApiProperty({ example: '1234567890' })
+  @IsString()
+  @IsNotEmpty()
+  unifiedNumber: string;
 
   @ApiPropertyOptional({ enum: ['admin', 'doctor'], default: 'doctor' })
   @IsOptional()

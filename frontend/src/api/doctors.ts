@@ -5,6 +5,8 @@ export interface Doctor {
   username: string;
   firstName: string;
   lastName: string;
+  email: string;
+  unifiedNumber: string;
   role: string;
   createdAt: string;
 }
@@ -14,6 +16,8 @@ export interface CreateDoctorPayload {
   firstName: string;
   lastName: string;
   password: string;
+  email: string;
+  unifiedNumber: string;
   role?: 'admin' | 'doctor';
 }
 

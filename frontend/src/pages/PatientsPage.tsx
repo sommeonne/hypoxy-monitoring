@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Table, Button, Modal, Form, Input, DatePicker, Typography } from 'antd';
-import { PlusOutlined, ArrowRightOutlined } from '@ant-design/icons';
+import React, { useState, useMemo } from 'react';
+import { Table, Button, Modal, Form, Input, DatePicker, Typography, Select, InputNumber, Space } from 'antd';
+import { PlusOutlined, ArrowRightOutlined, SearchOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchPatients, createPatient, Patient } from '../api/patients';
+import { getGroups } from '../utils/groups';
 import { useNavigate } from 'react-router-dom';
 
 const { Text } = Typography;
@@ -41,6 +42,11 @@ export default function PatientsPage() {
   const [isOpen, setIsOpen] = useState(false);
   const [form] = Form.useForm();
 
+  const [nameSearch, setNameSearch] = useState('');
+  const [cardSearch, setCardSearch] = useState('');
+  const [groupFilter, setGroupFilter] = useState<number | null>(null);
+  const groups = getGroups();
+
   const { data: patients = [], isLoading } = useQuery({
     queryKey: ['patients'],
     queryFn: fetchPatients,
@@ -55,19 +61,39 @@ export default function PatientsPage() {
     },
   });
 
+  const filtered = useMemo(() => {
+    const name = nameSearch.trim().toLowerCase();
+    const card = cardSearch.trim().toLowerCase();
+    return patients.filter((p) => {
+      if (name && !`${p.firstName} ${p.lastName}`.toLowerCase().includes(name)) return false;
+      if (card && !(p.cardNumber ?? '').toLowerCase().includes(card)) return false;
+      if (groupFilter != null && p.group !== groupFilter) return false;
+      return true;
+    });
+  }, [patients, nameSearch, cardSearch, groupFilter]);
+
   const columns = [
     {
       title: <span className="label-caps">Name</span>,
       render: (_: any, p: Patient) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <InitialsAvatar name={`${p.firstName} ${p.lastName}`} />
-          <div>
-            <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 13 }}>
-              {p.firstName} {p.lastName}
-            </div>
+          <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 13 }}>
+            {p.firstName} {p.lastName}
           </div>
         </div>
       ),
+    },
+    {
+      title: <span className="label-caps">Card №</span>,
+      dataIndex: 'cardNumber',
+      render: (v: string) => <Text style={{ color: '#64748B', fontSize: 13 }}>{v || '—'}</Text>,
+    },
+    {
+      title: <span className="label-caps">Group</span>,
+      dataIndex: 'group',
+      width: 80,
+      render: (v: number) => <Text style={{ color: '#64748B', fontSize: 13 }}>{v ?? '—'}</Text>,
     },
     {
       title: <span className="label-caps">Date of Birth</span>,
@@ -112,8 +138,10 @@ export default function PatientsPage() {
         style={{
           display: 'flex',
           justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
+          alignItems: 'flex-start',
+          marginBottom: 16,
+          flexWrap: 'wrap',
+          gap: 12,
         }}
       >
         <div>
@@ -121,7 +149,7 @@ export default function PatientsPage() {
             Patients
           </h1>
           <Text style={{ color: '#64748B', fontSize: 13 }}>
-            {patients.length} registered patient{patients.length !== 1 ? 's' : ''}
+            {filtered.length} of {patients.length} patient{patients.length !== 1 ? 's' : ''}
           </Text>
         </div>
         <Button
@@ -134,6 +162,38 @@ export default function PatientsPage() {
         </Button>
       </div>
 
+      {/* Filters */}
+      <Space wrap style={{ marginBottom: 16 }}>
+        <Input
+          prefix={<SearchOutlined style={{ color: '#94A3B8' }} />}
+          placeholder="Search by name..."
+          value={nameSearch}
+          onChange={(e) => setNameSearch(e.target.value)}
+          allowClear
+          style={{ width: 220 }}
+        />
+        <Input
+          prefix={<SearchOutlined style={{ color: '#94A3B8' }} />}
+          placeholder="Search by card number..."
+          value={cardSearch}
+          onChange={(e) => setCardSearch(e.target.value)}
+          allowClear
+          style={{ width: 220 }}
+        />
+        <Select
+          placeholder="Group"
+          value={groupFilter}
+          onChange={(v) => setGroupFilter(v)}
+          allowClear
+          onClear={() => setGroupFilter(null)}
+          style={{ width: 120 }}
+        >
+          {groups.map((g) => (
+            <Select.Option key={g} value={g}>Group {g}</Select.Option>
+          ))}
+        </Select>
+      </Space>
+
       <div
         style={{
           background: '#fff',
@@ -143,7 +203,7 @@ export default function PatientsPage() {
         }}
       >
         <Table
-          dataSource={patients}
+          dataSource={filtered}
           columns={columns}
           rowKey="id"
           loading={isLoading}
@@ -179,7 +239,21 @@ export default function PatientsPage() {
           }
           requiredMark={false}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+          <Form.Item
+            name="cardNumber"
+            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Card Number</span>}
+            rules={[{ required: true }]}
+          >
+            <Input />
+          </Form.Item>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 16px' }}>
+            <Form.Item
+              name="lastName"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Last Name</span>}
+              rules={[{ required: true }]}
+            >
+              <Input />
+            </Form.Item>
             <Form.Item
               name="firstName"
               label={<span style={{ fontWeight: 500, fontSize: 13 }}>First Name</span>}
@@ -188,31 +262,95 @@ export default function PatientsPage() {
               <Input />
             </Form.Item>
             <Form.Item
-              name="lastName"
-              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Last Name</span>}
+              name="patronymic"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Patronymic</span>}
               rules={[{ required: true }]}
             >
               <Input />
             </Form.Item>
           </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <Form.Item
+              name="group"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Group</span>}
+              rules={[{ required: true }]}
+            >
+              <Select>
+                {groups.map((g) => (
+                  <Select.Option key={g} value={g}>{g}</Select.Option>
+                ))}
+              </Select>
+            </Form.Item>
+            <Form.Item
+              name="dateOfBirth"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Date of Birth</span>}
+              rules={[{ required: true }]}
+            >
+              <DatePicker style={{ width: '100%' }} />
+            </Form.Item>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 16px' }}>
+            <Form.Item
+              name="height"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Height (cm)</span>}
+              rules={[{ required: true }]}
+            >
+              <InputNumber style={{ width: '100%' }} min={0} max={300} />
+            </Form.Item>
+            <Form.Item
+              name="weight"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Weight (kg)</span>}
+              rules={[{ required: true }]}
+            >
+              <InputNumber style={{ width: '100%' }} min={0} max={500} step={0.1} />
+            </Form.Item>
+            <Form.Item
+              name="gender"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Gender</span>}
+              rules={[{ required: true }]}
+            >
+              <Select>
+                <Select.Option value="Male">Male</Select.Option>
+                <Select.Option value="Female">Female</Select.Option>
+              </Select>
+            </Form.Item>
+          </div>
           <Form.Item
-            name="dateOfBirth"
-            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Date of Birth</span>}
+            name="address"
+            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Address</span>}
             rules={[{ required: true }]}
           >
-            <DatePicker style={{ width: '100%' }} />
+            <Input />
           </Form.Item>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <Form.Item
+              name="phone"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Phone</span>}
+              rules={[{ required: true }]}
+            >
+              <Input placeholder="+38(***) ***-**-**" />
+            </Form.Item>
+            <Form.Item
+              name="email"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Email</span>}
+              rules={[{ required: true }, { type: 'email', message: 'Invalid email' }]}
+            >
+              <Input placeholder="example@email.com" />
+            </Form.Item>
+          </div>
           <Form.Item
             name="diagnosis"
             label={<span style={{ fontWeight: 500, fontSize: 13 }}>Diagnosis</span>}
+            rules={[{ required: true }]}
           >
             <Input />
           </Form.Item>
           <Form.Item
             name="notes"
             label={<span style={{ fontWeight: 500, fontSize: 13 }}>Notes</span>}
+            rules={[{ required: true }]}
           >
-            <Input.TextArea rows={3} />
+            <Input.TextArea rows={2} />
           </Form.Item>
         </Form>
       </Modal>

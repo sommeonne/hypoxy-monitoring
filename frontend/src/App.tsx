@@ -7,6 +7,7 @@ import PatientsPage from './pages/PatientsPage';
 import PatientDetailPage from './pages/PatientDetailPage';
 import SessionDetailPage from './pages/SessionDetailPage';
 import DoctorsPage from './pages/DoctorsPage';
+import AdminSettingsPage from './pages/AdminSettingsPage';
 import LoginPage from './pages/LoginPage';
 import { isLoggedIn, isAdmin } from './utils/auth';
 
@@ -41,6 +42,7 @@ export default function App() {
                     <Route path="/patients/:id" element={<PatientDetailPage />} />
                     <Route path="/sessions/:id" element={<SessionDetailPage />} />
                     <Route path="/doctors" element={<AdminRoute><DoctorsPage /></AdminRoute>} />
+                    <Route path="/admin-settings" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
                   </Routes>
                 </div>
               </Content>

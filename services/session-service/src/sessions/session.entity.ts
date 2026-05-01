@@ -54,6 +54,10 @@ export class Session {
   @Column({ type: 'jsonb', nullable: true })
   summary: SessionSummary;
 
+  @ApiProperty({ nullable: true })
+  @Column({ type: 'text', nullable: true })
+  notes: string;
+
   @CreateDateColumn()
   createdAt: Date;
 }

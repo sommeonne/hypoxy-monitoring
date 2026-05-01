@@ -5,7 +5,7 @@ import {
   DashboardOutlined,
   TeamOutlined,
   MedicineBoxOutlined,
-  UserOutlined,
+  SettingOutlined,
   LogoutOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -60,7 +60,10 @@ export default function AppHeader() {
   const menuItems = [
     { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
     { key: '/patients', icon: <TeamOutlined />, label: 'Patients' },
-    ...(isAdmin() ? [{ key: '/doctors', icon: <MedicineBoxOutlined />, label: 'Doctors' }] : []),
+    ...(isAdmin() ? [
+      { key: '/doctors', icon: <MedicineBoxOutlined />, label: 'Doctors' },
+      { key: '/admin-settings', icon: <SettingOutlined />, label: 'Admin Settings' },
+    ] : []),
   ];
 
   const userMenu = {

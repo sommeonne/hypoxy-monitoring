@@ -76,4 +76,10 @@ export class SessionsService {
       order: { startedAt: 'DESC' },
     });
   }
+
+  async updateNotes(id: string, notes: string | undefined): Promise<Session> {
+    const session = await this.findOne(id);
+    session.notes = notes ?? null!;
+    return this.repo.save(session);
+  }
 }

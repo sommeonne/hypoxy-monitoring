@@ -4,9 +4,16 @@ import { ReportsService } from './reports.service';
 import { DataFetcherService } from './data-fetcher.service';
 import { PdfGeneratorService } from './pdf-generator.service';
 import { ExcelGeneratorService } from './excel-generator.service';
+import { EmailService } from './email.service';
 
 @Module({
   controllers: [ReportsController],
-  providers: [ReportsService, DataFetcherService, PdfGeneratorService, ExcelGeneratorService],
+  providers: [
+    ReportsService,
+    DataFetcherService,
+    PdfGeneratorService,
+    ExcelGeneratorService,
+    EmailService,
+  ],
 })
 export class ReportsModule {}

@@ -1,7 +1,13 @@
-import { IsString, IsNotEmpty, IsDateString, IsOptional } from 'class-validator';
+import { IsString, IsNotEmpty, IsDateString, IsNumber, IsEmail, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 
 export class CreatePatientDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  cardNumber: string;
+
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
@@ -12,17 +18,55 @@ export class CreatePatientDto {
   @IsNotEmpty()
   lastName: string;
 
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  patronymic: string;
+
   @ApiProperty({ example: '1980-01-15' })
   @IsDateString()
   dateOfBirth: string;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
-  @IsString()
-  diagnosis?: string;
+  @ApiProperty()
+  @IsNumber()
+  @Type(() => Number)
+  group: number;
 
-  @ApiProperty({ required: false })
-  @IsOptional()
+  @ApiProperty()
+  @IsNumber()
+  @Type(() => Number)
+  height: number;
+
+  @ApiProperty()
+  @IsNumber()
+  @Type(() => Number)
+  weight: number;
+
+  @ApiProperty({ enum: ['Male', 'Female'] })
+  @IsEnum(['Male', 'Female'])
+  gender: string;
+
+  @ApiProperty()
   @IsString()
-  notes?: string;
+  @IsNotEmpty()
+  address: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  phone: string;
+
+  @ApiProperty()
+  @IsEmail()
+  email: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  diagnosis: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  notes: string;
 }

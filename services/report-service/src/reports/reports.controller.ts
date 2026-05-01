@@ -1,4 +1,6 @@
-import { Controller, Get, Param, ParseUUIDPipe, Res } from '@nestjs/common';
+import {
+  Controller, Get, Post, Param, ParseUUIDPipe, Res, HttpCode, HttpStatus,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ReportsService } from './reports.service';
@@ -39,5 +41,13 @@ export class ReportsController {
       'Content-Length': buffer.length,
     });
     res.end(buffer);
+  }
+
+  @Post('session/:id/email')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Send session PDF report to patient email' })
+  @ApiResponse({ status: 204, description: 'Email sent successfully' })
+  async sendSessionEmail(@Param('id', ParseUUIDPipe) id: string) {
+    await this.reportsService.sendSessionReportEmail(id);
   }
 }

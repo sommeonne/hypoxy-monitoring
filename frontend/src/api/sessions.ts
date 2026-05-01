@@ -19,6 +19,7 @@ export interface Session {
   endedAt?: string;
   status: 'active' | 'completed' | 'cancelled';
   summary?: SessionSummary;
+  notes?: string;
 }
 
 export const fetchActiveSessions = () => api.get<Session[]>('/sessions/active');
@@ -30,3 +31,5 @@ export const startSession = (data: { patientId: string; doctorId?: string }) =>
 export type EndSessionData = Partial<Omit<SessionSummary, 'durationMinutes'>>;
 export const endSession = (id: string, data: EndSessionData = {}) =>
   api.put<Session>(`/sessions/${id}/end`, data);
+export const updateSessionNotes = (id: string, notes: string) =>
+  api.patch<Session>(`/sessions/${id}/notes`, { notes });

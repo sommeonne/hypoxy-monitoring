@@ -29,6 +29,14 @@ export class Doctor {
   @Column({ default: 'doctor' })
   role: string;
 
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true })
+  email: string;
+
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true })
+  unifiedNumber: string;
+
   @ApiProperty()
   @CreateDateColumn()
   createdAt: Date;

@@ -11,6 +11,10 @@ export class Patient {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true })
+  cardNumber: string;
+
   @ApiProperty()
   @Column({ transformer: encryptTransformer })
   firstName: string;
@@ -19,9 +23,41 @@ export class Patient {
   @Column({ transformer: encryptTransformer })
   lastName: string;
 
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true, transformer: encryptTransformer })
+  patronymic: string;
+
   @ApiProperty()
   @Column({ type: 'date' })
   dateOfBirth: Date;
+
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true })
+  group: number;
+
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true })
+  height: number;
+
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true, type: 'float' })
+  weight: number;
+
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true })
+  gender: string;
+
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true, transformer: encryptTransformer })
+  address: string;
+
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true, transformer: encryptTransformer })
+  phone: string;
+
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true, transformer: encryptTransformer })
+  email: string;
 
   @ApiProperty({ nullable: true })
   @Column({ nullable: true, transformer: encryptTransformer })

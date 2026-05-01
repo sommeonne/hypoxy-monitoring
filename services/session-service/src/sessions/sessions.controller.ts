@@ -1,10 +1,11 @@
 import {
-  Controller, Get, Post, Put, Body, Param, ParseUUIDPipe,
+  Controller, Get, Post, Put, Patch, Body, Param, ParseUUIDPipe,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SessionsService } from './sessions.service';
 import { CreateSessionDto } from './dto/create-session.dto';
 import { EndSessionDto } from './dto/end-session.dto';
+import { UpdateNotesDto } from './dto/update-notes.dto';
 import { Session } from './session.entity';
 
 @ApiTags('sessions')
@@ -48,5 +49,15 @@ export class SessionsController {
   @ApiResponse({ status: 200, type: [Session] })
   findByPatient(@Param('patientId', ParseUUIDPipe) patientId: string): Promise<Session[]> {
     return this.sessionsService.findByPatient(patientId);
+  }
+
+  @Patch(':id/notes')
+  @ApiOperation({ summary: 'Update session notes' })
+  @ApiResponse({ status: 200, type: Session })
+  updateNotes(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateNotesDto,
+  ): Promise<Session> {
+    return this.sessionsService.updateNotes(id, dto.notes);
   }
 }

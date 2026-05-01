@@ -51,6 +51,8 @@ export class DoctorsService implements OnModuleInit {
       firstName: dto.firstName,
       lastName: dto.lastName,
       passwordHash,
+      email: dto.email,
+      unifiedNumber: dto.unifiedNumber,
       role: dto.role ?? 'doctor',
     });
     return this.repo.save(doctor);

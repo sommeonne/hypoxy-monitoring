@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Table, Button, Modal, Form, Input, Select, Tag, Popconfirm, Typography, Space } from 'antd';
+import { Table, Button, Modal, Form, Input, Tag, Popconfirm, Typography, Space } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchDoctors, createDoctor, deleteDoctor, Doctor } from '../api/doctors';
@@ -39,10 +39,11 @@ export default function DoctorsPage() {
   const [isOpen, setIsOpen] = useState(false);
   const [form] = Form.useForm();
 
-  const { data: doctors = [], isLoading } = useQuery({
+  const { data: all = [], isLoading } = useQuery({
     queryKey: ['doctors'],
     queryFn: fetchDoctors,
   });
+  const doctors = all.filter((d) => d.role === 'doctor');
 
   const createMutation = useMutation({
     mutationFn: createDoctor,
@@ -73,33 +74,25 @@ export default function DoctorsPage() {
       ),
     },
     {
+      title: <span className="label-caps">Unified №</span>,
+      dataIndex: 'unifiedNumber',
+      render: (v: string) => (
+        <Text style={{ color: '#64748B', fontSize: 13, fontFamily: 'monospace' }}>{v || '—'}</Text>
+      ),
+    },
+    {
+      title: <span className="label-caps">Email</span>,
+      dataIndex: 'email',
+      render: (v: string) => (
+        <Text style={{ color: '#64748B', fontSize: 13 }}>{v || '—'}</Text>
+      ),
+    },
+    {
       title: <span className="label-caps">Username</span>,
       dataIndex: 'username',
       render: (u: string) => (
         <Text style={{ color: '#64748B', fontSize: 13, fontFamily: 'monospace' }}>@{u}</Text>
       ),
-    },
-    {
-      title: <span className="label-caps">Role</span>,
-      dataIndex: 'role',
-      width: 110,
-      render: (role: string) => {
-        const isAdmin = role === 'admin';
-        return (
-          <Tag
-            style={{
-              background: isAdmin ? '#FEF2F2' : '#E1F5EE',
-              color: isAdmin ? '#E24B4A' : '#1D9E75',
-              border: 'none',
-              borderRadius: 6,
-              fontWeight: 600,
-              fontSize: 11,
-            }}
-          >
-            {role.toUpperCase()}
-          </Tag>
-        );
-      },
     },
     {
       title: <span className="label-caps">Created</span>,
@@ -210,50 +203,50 @@ export default function DoctorsPage() {
           onFinish={(v) => createMutation.mutate(v)}
           requiredMark={false}
         >
-          <Space style={{ width: '100%' }} direction="vertical" size={0}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-              <Form.Item
-                name="firstName"
-                label={<span style={{ fontWeight: 500, fontSize: 13 }}>First Name</span>}
-                rules={[{ required: true }]}
-              >
-                <Input />
-              </Form.Item>
-              <Form.Item
-                name="lastName"
-                label={<span style={{ fontWeight: 500, fontSize: 13 }}>Last Name</span>}
-                rules={[{ required: true }]}
-              >
-                <Input />
-              </Form.Item>
-            </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
             <Form.Item
-              name="username"
-              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Username</span>}
+              name="firstName"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>First Name</span>}
               rules={[{ required: true }]}
             >
               <Input />
             </Form.Item>
             <Form.Item
-              name="password"
-              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Password</span>}
-              rules={[{ required: true, min: 6 }]}
+              name="lastName"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Last Name</span>}
+              rules={[{ required: true }]}
             >
-              <Input.Password />
+              <Input />
             </Form.Item>
-            <Form.Item
-              name="role"
-              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Role</span>}
-              initialValue="doctor"
-            >
-              <Select
-                options={[
-                  { value: 'doctor', label: 'Doctor' },
-                  { value: 'admin', label: 'Admin' },
-                ]}
-              />
-            </Form.Item>
-          </Space>
+          </div>
+          <Form.Item
+            name="unifiedNumber"
+            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Unified Doctor Number</span>}
+            rules={[{ required: true }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="email"
+            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Email</span>}
+            rules={[{ required: true }, { type: 'email', message: 'Invalid email' }]}
+          >
+            <Input placeholder="doctor@hospital.com" />
+          </Form.Item>
+          <Form.Item
+            name="username"
+            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Username</span>}
+            rules={[{ required: true }]}
+          >
+            <Input />
+          </Form.Item>
+          <Form.Item
+            name="password"
+            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Password</span>}
+            rules={[{ required: true, min: 6 }]}
+          >
+            <Input.Password />
+          </Form.Item>
         </Form>
       </Modal>
     </div>
