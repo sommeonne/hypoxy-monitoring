@@ -19,6 +19,9 @@ const GATEWAY_URL = process.env.GATEWAY_URL ?? 'http://localhost:3000';
 const DEVICE_URL  = process.env.DEVICE_URL  ?? 'http://localhost:3001';
 const INTERVAL_MS = Number(process.env.INTERVAL_MS ?? 2000);
 const MODE        = process.env.MODE ?? 'normal';
+const USERNAME    = process.env.SIM_USERNAME ?? 'admin';
+const PASSWORD    = process.env.SIM_PASSWORD ?? 'admin123';
+const INIT_TOKEN  = process.env.SIM_TOKEN ?? null;
 
 const c = {
   reset:  '\x1b[0m',
@@ -42,7 +45,20 @@ const BASELINES = {
   moderate: { spo2: 87, heartRate: 105, respiratoryRate: 24 }, 
   crisis:   { spo2: 68, heartRate: 145, respiratoryRate: 36 }, 
 };
-const baseline = BASELINES[MODE] ?? BASELINES.normal;
+const baseline = BASELINES[MODE.toLowerCase()] ?? BASELINES.normal;
+
+let token = null;
+
+async function login() {
+  const res = await fetch(`${GATEWAY_URL}/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ username: USERNAME, password: PASSWORD }),
+  });
+  if (!res.ok) throw new Error(`Login failed: ${res.status}`);
+  const data = await res.json();
+  token = data.access_token;
+}
 
 const state = {};
 
@@ -78,7 +94,9 @@ function nextReading(sessionId) {
 }
 
 async function getActiveSessions() {
-  const res = await fetch(`${GATEWAY_URL}/api/sessions/active`);
+  const res = await fetch(`${GATEWAY_URL}/api/sessions/active`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
   if (!res.ok) throw new Error(`Sessions fetch failed: ${res.status}`);
   return res.json();
 }
@@ -148,11 +166,25 @@ ${c.bold}${c.cyan}Hypoxy Device Simulator${c.reset}
 ${c.dim}Press Ctrl+C to stop.${c.reset}
 `);
 
-tick();
-const timer = setInterval(tick, INTERVAL_MS);
+if (INIT_TOKEN) {
+  token = INIT_TOKEN;
+  ok(`Using provided token`);
+  tick();
+  setInterval(tick, INTERVAL_MS);
+} else {
+  login()
+    .then(() => {
+      ok(`Logged in as ${c.cyan}${USERNAME}${c.reset}`);
+      tick();
+      setInterval(tick, INTERVAL_MS);
+    })
+    .catch((e) => {
+      err(`Auth failed — ${e.message}`);
+      process.exit(1);
+    });
+}
 
 process.on('SIGINT', () => {
-  clearInterval(timer);
   console.log(`\n${c.dim}Simulator stopped.${c.reset}`);
   process.exit(0);
 });

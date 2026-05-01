@@ -3,11 +3,12 @@ import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { EventsGateway } from './events.gateway';
 
-const CHANNELS = ['measurements', 'alerts', 'sessions'] as const;
+const CHANNELS = ['measurements', 'alerts', 'sessions', 'analysis'] as const;
 const CHANNEL_EVENT: Record<string, string> = {
   measurements: 'measurement:new',
   alerts: 'alert:new',
   sessions: 'session:updated',
+  analysis: 'analysis:result',
 };
 
 @Injectable()

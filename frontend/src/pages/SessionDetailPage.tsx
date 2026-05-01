@@ -14,33 +14,6 @@ const { Text } = Typography;
 
 type AlertFilter = 'ALL' | 'CRITICAL' | 'WARNING';
 
-function scoreSpo2(v: number): number {
-  if (v >= 94) return 0;
-  if (v >= 90) return ((94 - v) / 4) * 5;
-  if (v >= 85) return 5 + ((90 - v) / 5) * 3;
-  return Math.min(10, 8 + ((85 - v) / 5) * 2);
-}
-
-function scoreHeartRate(v: number): number {
-  if (v >= 60 && v <= 100) return 0;
-  if (v >= 50 && v < 60) return ((60 - v) / 10) * 5;
-  if (v > 100 && v <= 120) return ((v - 100) / 20) * 5;
-  if (v < 50) return Math.min(10, 5 + ((50 - v) / 20) * 5);
-  return Math.min(10, 5 + ((v - 120) / 40) * 5);
-}
-
-function scoreRespRate(v: number): number {
-  if (v >= 12 && v <= 20) return 0;
-  if (v >= 8 && v < 12) return ((12 - v) / 4) * 5;
-  if (v > 20 && v <= 30) return ((v - 20) / 10) * 5;
-  if (v < 8) return Math.min(10, 5 + ((8 - v) / 8) * 5);
-  return Math.min(10, 5 + ((v - 30) / 20) * 5);
-}
-
-function computeHypoxiaIndex(m: { spo2: number; heartRate: number; respiratoryRate: number }): number {
-  const score = scoreSpo2(m.spo2) * 0.6 + scoreHeartRate(m.heartRate) * 0.25 + scoreRespRate(m.respiratoryRate) * 0.15;
-  return Math.min(10, parseFloat(score.toFixed(2)));
-}
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -71,6 +44,7 @@ export default function SessionDetailPage() {
   const queryClient = useQueryClient();
   const { on } = useSocket();
   const [liveData, setLiveData] = useState<Measurement[]>([]);
+  const [hypoxiaIndex, setHypoxiaIndex] = useState<number | undefined>();
   const [alertFilter, setAlertFilter] = useState<AlertFilter>('ALL');
   const [sortDesc, setSortDesc] = useState(true);
 
@@ -129,6 +103,12 @@ export default function SessionDetailPage() {
     });
   }, [on, id, queryClient]);
 
+  useEffect(() => {
+    return on('analysis:result', (r: { sessionId: string; hypoxiaIndex: number }) => {
+      if (r.sessionId === id) setHypoxiaIndex(r.hypoxiaIndex);
+    });
+  }, [on, id]);
+
   if (isLoading)
     return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
   if (!session)
@@ -136,7 +116,6 @@ export default function SessionDetailPage() {
 
   const displayData = liveData.length > 0 ? liveData : measurements;
   const latest = displayData[0];
-  const hypoxiaIndex = latest ? computeHypoxiaIndex(latest) : undefined;
 
   const criticalCount = alerts.filter((a) => a.level === 'CRITICAL').length;
   const warningCount = alerts.filter((a) => a.level === 'WARNING').length;
@@ -155,6 +134,21 @@ export default function SessionDetailPage() {
   ];
 
   const isActive = session.status === 'active';
+
+  async function downloadReport(sessionId: string, format: 'pdf' | 'excel') {
+    const token = localStorage.getItem('access_token');
+    const res = await fetch(`/api/reports/session/${sessionId}/${format}`, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `session-${sessionId}.${format === 'pdf' ? 'pdf' : 'xlsx'}`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
 
   return (
     <div>
@@ -180,17 +174,15 @@ export default function SessionDetailPage() {
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button
             icon={<DownloadOutlined />}
-            href={`/api/reports/session/${id}/pdf`}
-            target="_blank"
             style={{ borderColor: '#E2E8F0', color: '#374151' }}
+            onClick={() => downloadReport(id!, 'pdf')}
           >
             PDF
           </Button>
           <Button
             icon={<DownloadOutlined />}
-            href={`/api/reports/session/${id}/excel`}
-            target="_blank"
             style={{ borderColor: '#E2E8F0', color: '#374151' }}
+            onClick={() => downloadReport(id!, 'excel')}
           >
             Excel
           </Button>

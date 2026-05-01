@@ -1,6 +1,7 @@
 import { Injectable, NestMiddleware, Logger } from '@nestjs/common';
 import { Request, Response, NextFunction } from 'express';
 import { ConfigService } from '@nestjs/config';
+import { JwtService } from '@nestjs/jwt';
 import { createProxyMiddleware } from 'http-proxy-middleware';
 import { ClientRequest } from 'http';
 
@@ -26,9 +27,29 @@ const DEFAULT_URLS: Record<string, string> = {
 export class ProxyMiddleware implements NestMiddleware {
   private readonly logger = new Logger(ProxyMiddleware.name);
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly jwtService: JwtService,
+  ) {}
 
   use(req: Request, res: Response, next: NextFunction) {
+    const authHeader = req.headers['authorization'];
+    const queryToken = req.query['token'] as string | undefined;
+    const rawToken = authHeader?.startsWith('Bearer ')
+      ? authHeader.slice(7)
+      : queryToken;
+
+    if (!rawToken) {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+    try {
+      this.jwtService.verify(rawToken);
+    } catch {
+      res.status(401).json({ message: 'Unauthorized' });
+      return;
+    }
+
     const path = req.path;
     const routeKey = Object.keys(ROUTE_MAP).find((prefix) => path.startsWith(prefix));
     if (!routeKey) return next();
@@ -52,9 +73,11 @@ export class ProxyMiddleware implements NestMiddleware {
             proxyReq.write(bodyData);
           }
         },
-        error: (_err: Error, _req: Request, res: Response) => {
+        error: (_err: Error, _req: Request, res: Response | any) => {
           this.logger.error(`Proxy error for ${path}`);
-          res.status(502).json({ message: 'Service unavailable', path });
+          if (typeof res.status === 'function') {
+            res.status(502).json({ message: 'Service unavailable', path });
+          }
         },
       },
     });

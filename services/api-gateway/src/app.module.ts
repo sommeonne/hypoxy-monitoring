@@ -43,7 +43,7 @@ import { WebsocketModule } from './websocket/websocket.module';
         password: config.get('DB_PASSWORD', 'hypoxy_password'),
         database: config.get('DB_NAME', 'hypoxy_db'),
         entities: [Doctor],
-        synchronize: true,
+        synchronize: config.get('NODE_ENV') !== 'production',
         logging: config.get('NODE_ENV') !== 'production',
       }),
     }),

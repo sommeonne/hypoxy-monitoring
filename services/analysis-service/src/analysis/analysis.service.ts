@@ -1,13 +1,17 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AlertLevel, THRESHOLDS, Measurement, AnalysisResult } from './thresholds';
 import { AlertsHttpService } from './alerts-http.service';
+import { RedisPublisherService } from './redis-publisher.service';
 
 @Injectable()
 export class AnalysisService {
   private readonly logger = new Logger(AnalysisService.name);
   private readonly slidingWindow = new Map<string, number[]>();
 
-  constructor(private readonly alertsHttp: AlertsHttpService) {}
+  constructor(
+    private readonly alertsHttp: AlertsHttpService,
+    private readonly redisPublisher: RedisPublisherService,
+  ) {}
 
   async analyze(measurement: Measurement): Promise<AnalysisResult> {
     const anomalies: string[] = [];
@@ -59,6 +63,14 @@ export class AnalysisService {
     if (level !== AlertLevel.NORMAL) {
       await this.sendAlert(result);
     }
+
+    await this.redisPublisher.publish('analysis', JSON.stringify({
+      measurementId: measurement.id,
+      patientId: measurement.patientId,
+      sessionId: measurement.sessionId,
+      hypoxiaIndex,
+      level,
+    }));
 
     return result;
   }
