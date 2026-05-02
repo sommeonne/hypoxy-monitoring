@@ -345,13 +345,6 @@ export default function PatientsPage() {
           >
             <Input />
           </Form.Item>
-          <Form.Item
-            name="notes"
-            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Notes</span>}
-            rules={[{ required: true }]}
-          >
-            <Input.TextArea rows={2} />
-          </Form.Item>
         </Form>
       </Modal>
     </div>

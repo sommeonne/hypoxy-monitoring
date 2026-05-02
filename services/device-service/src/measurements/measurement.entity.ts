@@ -27,6 +27,10 @@ export class Measurement {
   @Column('float')
   respiratoryRate: number;
 
+  @ApiProperty({ nullable: true })
+  @Column({ type: 'float', nullable: true })
+  o2Percentage: number;
+
   @ApiProperty()
   @CreateDateColumn()
   createdAt: Date;

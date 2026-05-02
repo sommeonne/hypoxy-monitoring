@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Layout, Menu, Badge, Avatar, Dropdown, notification } from 'antd';
+import React from 'react';
+import { Layout, Menu, Avatar, Dropdown } from 'antd';
 import {
-  BellOutlined,
   DashboardOutlined,
   TeamOutlined,
   MedicineBoxOutlined,
@@ -9,8 +8,8 @@ import {
   LogoutOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useSocket } from '../hooks/useSocket';
 import { isAdmin, getUsername, logout } from '../utils/auth';
+import AlertPanel from './AlertPanel';
 
 const { Header } = Layout;
 
@@ -40,22 +39,6 @@ function HeartPulseIcon() {
 export default function AppHeader() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { on } = useSocket();
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [api, contextHolder] = notification.useNotification();
-
-  useEffect(() => {
-    return on('alert:new', (alert: any) => {
-      setUnreadCount((c) => c + 1);
-      api.open({
-        type: alert?.level === 'CRITICAL' ? 'error' : 'warning',
-        message: alert?.level ?? 'Alert',
-        description: alert?.message ?? 'A new alert was triggered.',
-        placement: 'topRight',
-        duration: 6,
-      });
-    });
-  }, [on, api]);
 
   const menuItems = [
     { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
@@ -81,7 +64,7 @@ export default function AppHeader() {
 
   return (
     <>
-      {contextHolder}
+      <AlertPanel />
       <Header
         style={{
           display: 'flex',
@@ -149,17 +132,6 @@ export default function AppHeader() {
             flexShrink: 0,
           }}
         >
-          <Badge
-            count={unreadCount}
-            size="small"
-            style={{ backgroundColor: '#E24B4A' }}
-          >
-            <BellOutlined
-              style={{ fontSize: 18, color: '#94A3B8', cursor: 'pointer' }}
-              onClick={() => setUnreadCount(0)}
-            />
-          </Badge>
-
           <Dropdown menu={userMenu} placement="bottomRight">
             <div
               style={{

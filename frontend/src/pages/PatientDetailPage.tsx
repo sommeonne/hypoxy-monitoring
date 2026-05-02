@@ -13,11 +13,14 @@ import {
   DatePicker,
   Select,
   InputNumber,
+  Tabs,
+  Empty,
 } from "antd";
 import {
   PlayCircleOutlined,
   ArrowRightOutlined,
   EditOutlined,
+  FileTextOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
 import { getGroups } from "../utils/groups";
@@ -57,21 +60,14 @@ function PatientAvatar({
   );
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
-  return (
-    <span style={{ fontSize: 15, fontWeight: 600, color: "#0F172A" }}>
-      {children}
-    </span>
-  );
-}
-
 export default function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [modalOpen, setModalOpen] = useState(false);
-  // const [editOpen, setEditOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [editForm] = Form.useForm();
+  const [startForm] = Form.useForm();
 
   const { data: patient, isLoading: patLoading } = useQuery({
     queryKey: ["patient", id],
@@ -93,14 +89,20 @@ export default function PatientDetailPage() {
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["patient", id] });
-      // setEditOpen(false);
+      setEditOpen(false);
     },
   });
 
   const startMutation = useMutation({
-    mutationFn: () => startSession({ patientId: id! }),
+    mutationFn: (values: { o2Percentage: number; durationMinutes: number; durationSeconds: number }) =>
+      startSession({
+        patientId: id!,
+        o2Percentage: values.o2Percentage,
+        plannedDurationSeconds: values.durationMinutes * 60 + values.durationSeconds,
+      }),
     onSuccess: (session) => {
       setModalOpen(false);
+      startForm.resetFields();
       queryClient.invalidateQueries({ queryKey: ["patientSessions", id] });
       navigate(`/sessions/${session.id}`);
     },
@@ -116,6 +118,13 @@ export default function PatientDetailPage() {
     );
 
   const hasActiveSession = sessions.some((s) => s.status === "active");
+
+  const sessionNotes = sessions
+    .filter((s) => s.notes?.trim())
+    .sort(
+      (a, b) =>
+        new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime()
+    );
 
   const sessionColumns = [
     {
@@ -183,9 +192,121 @@ export default function PatientDetailPage() {
     },
   ];
 
+  const tabItems = [
+    {
+      key: "info",
+      label: "Patient Info",
+      children: (
+        <PatientInfoCard
+          cardNumber={patient.cardNumber}
+          lastName={patient.lastName}
+          firstName={patient.firstName}
+          patronymic={patient.patronymic}
+          dateOfBirth={patient.dateOfBirth}
+          gender={patient.gender}
+          group={patient.group ?? null}
+          height={patient.height ?? null}
+          weight={patient.weight ?? null}
+          phone={patient.phone}
+          email={patient.email}
+          address={patient.address}
+          diagnosis={patient.diagnosis}
+        />
+      ),
+    },
+    {
+      key: "sessions",
+      label: `Sessions (${sessions.length})`,
+      children: (
+        <Card
+          style={{
+            borderRadius: 12,
+            border: "1px solid #E2E8F0",
+            boxShadow: "none",
+          }}
+          styles={{ body: { padding: 20 } }}
+        >
+          <Table
+            dataSource={sessions}
+            columns={sessionColumns}
+            rowKey="id"
+            pagination={{ pageSize: 10, size: "small" }}
+            className="teal-table"
+            onRow={(s) => ({
+              onClick: () => navigate(`/sessions/${s.id}`),
+              style: { cursor: "pointer" },
+            })}
+          />
+        </Card>
+      ),
+    },
+    {
+      key: "notes",
+      label: `Notes (${sessionNotes.length})`,
+      children:
+        sessionNotes.length === 0 ? (
+          <Empty
+            image={Empty.PRESENTED_IMAGE_SIMPLE}
+            description="No session notes yet"
+            style={{ margin: "48px auto" }}
+          />
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {sessionNotes.map((s) => (
+              <div
+                key={s.id}
+                onClick={() => navigate(`/sessions/${s.id}`)}
+                style={{
+                  background: "#fff",
+                  border: "1px solid #E2E8F0",
+                  borderRadius: 12,
+                  padding: "16px 20px",
+                  cursor: "pointer",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    marginBottom: 10,
+                  }}
+                >
+                  <FileTextOutlined
+                    style={{ color: "#1D9E75", fontSize: 14 }}
+                  />
+                  <span
+                    style={{
+                      fontSize: 12,
+                      fontWeight: 600,
+                      color: "#6B7280",
+                      textTransform: "uppercase",
+                      letterSpacing: "0.06em",
+                    }}
+                  >
+                    {new Date(s.startedAt).toLocaleString()}
+                  </span>
+                </div>
+                <p
+                  style={{
+                    margin: 0,
+                    fontSize: 14,
+                    color: "#111827",
+                    lineHeight: 1.6,
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {s.notes}
+                </p>
+              </div>
+            ))}
+          </div>
+        ),
+    },
+  ];
+
   return (
     <div>
-      {/* Patient header */}
       <div
         style={{
           display: "flex",
@@ -262,14 +383,57 @@ export default function PatientDetailPage() {
       <Modal
         title="Start Session"
         open={modalOpen}
-        onCancel={() => setModalOpen(false)}
-        onOk={() => startMutation.mutate()}
+        onCancel={() => { setModalOpen(false); startForm.resetFields(); }}
+        onOk={() =>
+          startForm.validateFields().then((values) => startMutation.mutate(values))
+        }
         okText="Start"
         confirmLoading={startMutation.isPending}
         okButtonProps={{ icon: <PlayCircleOutlined /> }}
         destroyOnClose
       >
-        {/* session settings fields will go here */}
+        <Form form={startForm} layout="vertical" style={{ marginTop: 16 }}>
+          <Form.Item
+            label="O₂ Concentration (%)"
+            name="o2Percentage"
+            rules={[
+              { required: true, message: "Required" },
+              { type: "number", min: 10, max: 20, message: "Must be between 10 and 20" },
+            ]}
+          >
+            <InputNumber
+              min={10}
+              max={20}
+              step={1}
+              addonAfter="%"
+              style={{ width: "100%" }}
+              placeholder="10 – 20"
+            />
+          </Form.Item>
+          <Form.Item label="Planned Duration">
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <Form.Item
+                name="durationMinutes"
+                initialValue={0}
+                rules={[{ required: true, message: "Required" }]}
+                style={{ marginBottom: 0, flex: 1 }}
+              >
+                <InputNumber min={0} max={999} addonAfter="min" style={{ width: "100%" }} />
+              </Form.Item>
+              <Form.Item
+                name="durationSeconds"
+                initialValue={0}
+                rules={[
+                  { required: true, message: "Required" },
+                  { type: "number", min: 0, max: 59, message: "0–59" },
+                ]}
+                style={{ marginBottom: 0, flex: 1 }}
+              >
+                <InputNumber min={0} max={59} addonAfter="sec" style={{ width: "100%" }} />
+              </Form.Item>
+            </div>
+          </Form.Item>
+        </Form>
       </Modal>
 
       <Modal
@@ -475,58 +639,10 @@ export default function PatientDetailPage() {
           >
             <Input />
           </Form.Item>
-          <Form.Item
-            name="notes"
-            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Notes</span>}
-            rules={[{ required: true }]}
-          >
-            <Input.TextArea rows={2} />
-          </Form.Item>
         </Form>
       </Modal>
 
-      {/* Patient info */}
-      <div style={{ marginBottom: 16 }}>
-        <PatientInfoCard
-          cardNumber={patient.cardNumber}
-          lastName={patient.lastName}
-          firstName={patient.firstName}
-          patronymic={patient.patronymic}
-          dateOfBirth={patient.dateOfBirth}
-          gender={patient.gender}
-          group={patient.group ?? null}
-          height={patient.height ?? null}
-          weight={patient.weight ?? null}
-          phone={patient.phone}
-          email={patient.email}
-          address={patient.address}
-          diagnosis={patient.diagnosis}
-          notes={patient.notes}
-        />
-      </div>
-
-      {/* Session history */}
-      <Card
-        title={<SectionTitle>Session History</SectionTitle>}
-        style={{
-          borderRadius: 12,
-          border: "1px solid #E2E8F0",
-          boxShadow: "none",
-        }}
-        styles={{ body: { padding: 20 } }}
-      >
-        <Table
-          dataSource={sessions}
-          columns={sessionColumns}
-          rowKey="id"
-          pagination={{ pageSize: 10, size: "small" }}
-          className="teal-table"
-          onRow={(s) => ({
-            onClick: () => navigate(`/sessions/${s.id}`),
-            style: { cursor: "pointer" },
-          })}
-        />
-      </Card>
+      <Tabs defaultActiveKey="info" items={tabItems} style={{ marginTop: 4 }} />
     </div>
   );
 }

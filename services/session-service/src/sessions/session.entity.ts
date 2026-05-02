@@ -58,6 +58,18 @@ export class Session {
   @Column({ type: 'text', nullable: true })
   notes: string;
 
+  @ApiProperty({ nullable: true })
+  @Column({ type: 'float', nullable: true })
+  o2Percentage: number;
+
+  @ApiProperty({ nullable: true })
+  @Column({ type: 'int', nullable: true })
+  plannedDurationSeconds: number;
+
+  @ApiProperty({ nullable: true })
+  @Column({ type: 'float', nullable: true })
+  lastHypoxiaIndex: number;
+
   @CreateDateColumn()
   createdAt: Date;
 }

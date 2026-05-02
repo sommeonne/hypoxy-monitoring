@@ -4,8 +4,6 @@ import {
   MonitorOutlined,
   AlertOutlined,
   ExclamationCircleOutlined,
-  SortAscendingOutlined,
-  SortDescendingOutlined,
 } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { fetchActiveSessions } from '../api/sessions';
@@ -72,12 +70,11 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
   const { on } = useSocket();
   const [alertFilter, setAlertFilter] = useState<AlertFilter>('ALL');
-  const [sortDesc, setSortDesc] = useState(true);
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ['activeSessions'],
     queryFn: fetchActiveSessions,
-    staleTime: Infinity,
+    refetchInterval: 10_000,
   });
 
   const { data: patients = [] } = useQuery({
@@ -92,27 +89,20 @@ export default function DashboardPage() {
   const { data: alerts = [] } = useQuery({
     queryKey: ['alerts'],
     queryFn: () => fetchAlerts(),
-    staleTime: Infinity,
+    refetchInterval: 15_000,
   });
 
   useEffect(() => {
-    const offS = on('session:updated', (session: any) => {
-      queryClient.setQueryData<any[]>(['activeSessions'], (prev = []) => {
-        if (session.status === 'active') {
-          const exists = prev.some((s) => s.id === session.id);
-          return exists
-            ? prev.map((s) => (s.id === session.id ? session : s))
-            : [...prev, session];
-        }
-        return prev.filter((s) => s.id !== session.id);
-      });
-    });
-
-    const offA = on('alert:new', (alert: Alert) => {
-      queryClient.setQueryData<Alert[]>(['alerts'], (prev = []) => [alert, ...prev]);
-    });
-
-    return () => { offS(); offA(); };
+    const offM = on('measurement:new', () =>
+      queryClient.invalidateQueries({ queryKey: ['activeSessions'] }),
+    );
+    const offA = on('alert:new', () =>
+      queryClient.invalidateQueries({ queryKey: ['alerts'] }),
+    );
+    const offS = on('session:updated', () =>
+      queryClient.invalidateQueries({ queryKey: ['activeSessions'] }),
+    );
+    return () => { offM(); offA(); offS(); };
   }, [on, queryClient]);
 
   if (isLoading) return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
@@ -120,13 +110,12 @@ export default function DashboardPage() {
   const criticalCount = alerts.filter((a) => a.level === 'CRITICAL').length;
   const warningCount = alerts.filter((a) => a.level === 'WARNING').length;
 
-  const filteredAlerts = alerts
-    .filter((a) => alertFilter === 'ALL' || a.level === alertFilter)
-    .sort((a, b) => {
-      const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      return sortDesc ? diff : -diff;
-    })
-;
+  const filteredAlerts = alerts.filter((a) => {
+    if (alertFilter === 'ALL') return true;
+    if (alertFilter === 'CRITICAL') return a.level === 'CRITICAL';
+    if (alertFilter === 'WARNING') return a.level === 'WARNING';
+    return true;
+  }).slice(0, 10);
 
   const filterButtons: { key: AlertFilter; label: string; cls: string }[] = [
     { key: 'ALL', label: `All (${alerts.length})`, cls: 'f-all' },
@@ -179,6 +168,7 @@ export default function DashboardPage() {
         styles={{ body: { padding: 20 } }}
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div className="pulse-dot-wrap"><div className="pulse-dot-inner" /></div>
             <span style={{ fontSize: 15, fontWeight: 600, color: '#0F172A' }}>Active Sessions</span>
             <span
               style={{
@@ -274,15 +264,6 @@ export default function DashboardPage() {
                   {label}
                 </button>
               ))}
-              <button
-                className="filter-btn"
-                onClick={() => setSortDesc((v) => !v)}
-                title={sortDesc ? 'Newest first' : 'Oldest first'}
-                style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-              >
-                {sortDesc ? <SortDescendingOutlined /> : <SortAscendingOutlined />}
-                {sortDesc ? 'Newest' : 'Oldest'}
-              </button>
             </div>
           </div>
         }
@@ -291,7 +272,7 @@ export default function DashboardPage() {
           dataSource={filteredAlerts}
           rowKey="id"
           size="small"
-          pagination={{ pageSize: 10, showSizeChanger: false, showTotal: (total) => `${total} alerts` }}
+          pagination={false}
           className="teal-table"
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No alerts" /> }}
           columns={[

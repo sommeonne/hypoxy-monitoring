@@ -8,7 +8,7 @@ import { fetchSessionMeasurements, Measurement } from '../api/measurements';
 import { fetchAlerts, Alert } from '../api/alerts';
 import { useSocket } from '../hooks/useSocket';
 import MeasurementChart from '../components/MeasurementChart';
-import VitalSign from '../components/VitalSign';
+import LatestVitals from '../components/LatestVitals';
 
 const { Text } = Typography;
 
@@ -97,6 +97,7 @@ export default function SessionDetailPage() {
             avgRespiratoryRate: Math.round((data.reduce((s, m) => s + m.respiratoryRate, 0) / data.length) * 10) / 10,
             minSpo2: Math.min(...data.map((m) => m.spo2)),
             maxHeartRate: Math.max(...data.map((m) => m.heartRate)),
+            ...(hypoxiaIndex != null && { hypoxiaIndex }),
           }
         : { totalMeasurements: 0, alertCount: alerts.length };
       return endSession(id!, summary);
@@ -323,26 +324,102 @@ export default function SessionDetailPage() {
               style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none', height: '100%' }}
               styles={{ body: { padding: 20 } }}
             >
-              <VitalSign
-                spo2={latest.spo2}
-                heartRate={latest.heartRate}
-                respiratoryRate={latest.respiratoryRate}
-                hypoxiaIndex={hypoxiaIndex}
+              <LatestVitals
+                vitals={{
+                  spo2:         latest.spo2,
+                  heartRate:    latest.heartRate,
+                  respRate:     latest.respiratoryRate,
+                  o2:           latest.o2Percentage,
+                  hypoxiaIndex: hypoxiaIndex ?? session.lastHypoxiaIndex,
+                  updatedAt:    latest.createdAt,
+                  trends: (() => {
+                    const win = [...displayData].slice(0, 20).reverse();
+                    return {
+                      spo2:      win.map(m => m.spo2),
+                      heartRate: win.map(m => m.heartRate),
+                      respRate:  win.map(m => m.respiratoryRate),
+                      o2:        win.some(m => m.o2Percentage != null)
+                                   ? win.map(m => m.o2Percentage ?? 0)
+                                   : undefined,
+                    };
+                  })(),
+                }}
               />
             </Card>
           </Col>
         )}
       </Row>
 
-      {/* Chart */}
-      <Card
-        title={<SectionTitle>Measurements Chart</SectionTitle>}
-        style={{ marginBottom: 16, borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
-        styles={{ body: { padding: '8px 20px 20px' } }}
-
-      >
-        <MeasurementChart measurements={displayData} />
-      </Card>
+      {/* 4 metric charts */}
+      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
+        <Col xs={24} md={12}>
+          <Card
+            title={<SectionTitle>SpO₂ (%)</SectionTitle>}
+            style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
+            styles={{ body: { padding: '8px 16px 16px' } }}
+          >
+            <MeasurementChart
+              measurements={displayData}
+              metric="spo2"
+              color="#1D9E75"
+              name="SpO₂"
+              unit="%"
+              domain={[70, 100]}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} md={12}>
+          <Card
+            title={<SectionTitle>Heart Rate (bpm)</SectionTitle>}
+            style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
+            styles={{ body: { padding: '8px 16px 16px' } }}
+          >
+            <MeasurementChart
+              measurements={displayData}
+              metric="heartRate"
+              color="#E24B4A"
+              name="HR"
+              unit=""
+              domain={[40, 180]}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} md={12}>
+          <Card
+            title={<SectionTitle>Respiratory Rate (/min)</SectionTitle>}
+            style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
+            styles={{ body: { padding: '8px 16px 16px' } }}
+          >
+            <MeasurementChart
+              measurements={displayData}
+              metric="respiratoryRate"
+              color="#7F77DD"
+              name="RR"
+              unit=""
+              domain={[8, 40]}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} md={12}>
+          <Card
+            title={<SectionTitle>O₂ Concentration (%)</SectionTitle>}
+            style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
+            styles={{ body: { padding: '8px 16px 16px' } }}
+          >
+            <MeasurementChart
+              measurements={displayData}
+              metric="o2Percentage"
+              color="#3B82F6"
+              name="O₂"
+              unit="%"
+              domain={[9, 22]}
+              referenceValue={session.o2Percentage}
+              referenceLabel={session.o2Percentage ? `Set: ${session.o2Percentage}%` : undefined}
+              referenceColor="#F59E0B"
+            />
+          </Card>
+        </Col>
+      </Row>
 
       {/* Alerts table */}
       <Card

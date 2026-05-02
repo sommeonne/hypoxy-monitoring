@@ -7,6 +7,7 @@ export interface Measurement {
   spo2: number;
   heartRate: number;
   respiratoryRate: number;
+  o2Percentage?: number;
   createdAt: string;
 }
 

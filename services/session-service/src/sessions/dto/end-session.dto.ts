@@ -37,4 +37,9 @@ export class EndSessionDto {
   @IsOptional()
   @IsNumber()
   totalMeasurements?: number;
+
+  @ApiProperty({ required: false, description: 'Last hypoxia index value (0–10)' })
+  @IsOptional()
+  @IsNumber()
+  hypoxiaIndex?: number;
 }

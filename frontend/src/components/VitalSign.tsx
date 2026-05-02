@@ -6,6 +6,7 @@ interface Props {
   heartRate: number;
   respiratoryRate: number;
   hypoxiaIndex?: number;
+  o2Percentage?: number;
 }
 
 function getSpo2Color(v: number): string {
@@ -92,7 +93,7 @@ function getHypoxiaStatus(v: number): { label: string; bg: string; color: string
   return { label: 'NORMAL', bg: '#E1F5EE', color: '#1D9E75' };
 }
 
-export default function VitalSign({ spo2, heartRate, respiratoryRate, hypoxiaIndex }: Props) {
+export default function VitalSign({ spo2, heartRate, respiratoryRate, hypoxiaIndex, o2Percentage }: Props) {
   const { label, bg, color } = hypoxiaIndex !== undefined
     ? getHypoxiaStatus(hypoxiaIndex)
     : getSpo2Status(spo2);
@@ -110,6 +111,10 @@ export default function VitalSign({ spo2, heartRate, respiratoryRate, hypoxiaInd
       )}
 
       <VitalCard label="SpO₂" value={spo2} unit="%" color={getSpo2Color(spo2)} />
+
+      {o2Percentage != null && (
+        <VitalCard label="O₂" value={o2Percentage} unit="%" color="#3B82F6" />
+      )}
 
       <VitalCard
         label="Heart Rate"

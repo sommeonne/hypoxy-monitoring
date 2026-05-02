@@ -50,6 +50,7 @@ export class SessionsService {
       endedAt,
       status: SessionStatus.COMPLETED,
       summary,
+      ...(dto.hypoxiaIndex != null && { lastHypoxiaIndex: dto.hypoxiaIndex }),
     });
 
     const updated = await this.repo.save(session);

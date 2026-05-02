@@ -114,9 +114,9 @@ export class AnalysisService {
 
   private scoreHeartRate(v: number): number {
     if (v >= 60 && v <= 100) return 0;
-    if (v >= 50) return ((60 - v) / 10) * 5;
-    if (v <= 120) return ((v - 100) / 20) * 5;
-    if (v < 50) return Math.min(10, 5 + ((50 - v) / 20) * 5);
+    if (v >= 50 && v < 60)   return ((60 - v) / 10) * 5;
+    if (v > 100 && v <= 120) return ((v - 100) / 20) * 5;
+    if (v < 50)              return Math.min(10, 5 + ((50 - v) / 20) * 5);
     return Math.min(10, 5 + ((v - 120) / 40) * 5);
   }
 

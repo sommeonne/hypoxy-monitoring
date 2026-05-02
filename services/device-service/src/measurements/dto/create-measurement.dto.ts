@@ -1,4 +1,4 @@
-import { IsUUID, IsNumber, Min, Max, IsNotEmpty } from 'class-validator';
+import { IsUUID, IsNumber, Min, Max, IsNotEmpty, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateMeasurementDto {
@@ -29,4 +29,11 @@ export class CreateMeasurementDto {
   @Min(0)
   @Max(100)
   respiratoryRate: number;
+
+  @ApiProperty({ description: 'Inhaled O₂ concentration %', minimum: 10, maximum: 21, required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(10)
+  @Max(21)
+  o2Percentage?: number;
 }
