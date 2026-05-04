@@ -6,7 +6,6 @@ import { RedisPublisherService } from './redis-publisher.service';
 @Injectable()
 export class AnalysisService {
   private readonly logger = new Logger(AnalysisService.name);
-  private readonly slidingWindow = new Map<string, number[]>();
 
   constructor(
     private readonly alertsHttp: AlertsHttpService,
@@ -17,37 +16,61 @@ export class AnalysisService {
     const anomalies: string[] = [];
     let level: AlertLevel = AlertLevel.NORMAL;
 
+    // --- SpO2 checks ---
+    // For COPD-like patients whose stable SpO2 is below the standard 94% threshold,
+    // lower the warning boundary to Math.max(94, baseline - 4) to avoid false alerts.
+    const effectiveWarningThreshold = measurement.baselineSpO2
+      ? Math.max(94, measurement.baselineSpO2 - 4)
+      : THRESHOLDS.spo2.warning;
+
     if (measurement.spo2 < THRESHOLDS.spo2.critical) {
       anomalies.push(`SpO2 critically low: ${measurement.spo2}%`);
       level = AlertLevel.CRITICAL;
-    } else if (measurement.spo2 < THRESHOLDS.spo2.warning) {
+    } else if (measurement.spo2 < effectiveWarningThreshold) {
       anomalies.push(`SpO2 below warning threshold: ${measurement.spo2}%`);
       if ((level as AlertLevel) !== AlertLevel.CRITICAL) level = AlertLevel.WARNING;
-    }
-
-    if (measurement.heartRate < THRESHOLDS.heartRate.min) {
-      anomalies.push(`Heart rate too low: ${measurement.heartRate} bpm`);
+    } else if (measurement.spo2 > THRESHOLDS.spo2.hyperoxiaWarning) {
+      anomalies.push(`SpO2 elevated (hyperoxia): ${measurement.spo2}%`);
       if ((level as AlertLevel) !== AlertLevel.CRITICAL) level = AlertLevel.WARNING;
-    } else if (measurement.heartRate > THRESHOLDS.heartRate.max) {
-      anomalies.push(`Heart rate too high: ${measurement.heartRate} bpm`);
-      if ((level as AlertLevel) !== AlertLevel.CRITICAL) level = AlertLevel.WARNING;
-    }
-
-    if (measurement.respiratoryRate < THRESHOLDS.respiratoryRate.min) {
-      anomalies.push(`Respiratory rate too low: ${measurement.respiratoryRate}`);
-      if ((level as AlertLevel) !== AlertLevel.CRITICAL) level = AlertLevel.WARNING;
-    } else if (measurement.respiratoryRate > THRESHOLDS.respiratoryRate.max) {
-      anomalies.push(`Respiratory rate too high: ${measurement.respiratoryRate}`);
+    } else if (
+      measurement.spo2 > THRESHOLDS.spo2.mildHyperoxiaWarning &&
+      measurement.baselineSpO2 !== undefined
+    ) {
+      anomalies.push(`SpO2 mildly elevated relative to patient baseline: ${measurement.spo2}%`);
       if ((level as AlertLevel) !== AlertLevel.CRITICAL) level = AlertLevel.WARNING;
     }
 
-    const windowAnomaly = this.detectSlidingWindowAnomaly(measurement);
-    if (windowAnomaly) {
-      anomalies.push(windowAnomaly);
-      if (level === AlertLevel.NORMAL) level = AlertLevel.WARNING;
+    // --- Heart rate checks ---
+    if (
+      measurement.heartRate < THRESHOLDS.heartRate.criticalMin ||
+      measurement.heartRate > THRESHOLDS.heartRate.criticalMax
+    ) {
+      anomalies.push(`Heart rate critically abnormal: ${measurement.heartRate} bpm`);
+      level = AlertLevel.CRITICAL;
+    } else if (
+      measurement.heartRate < THRESHOLDS.heartRate.warningMin ||
+      measurement.heartRate > THRESHOLDS.heartRate.warningMax
+    ) {
+      anomalies.push(`Heart rate abnormal: ${measurement.heartRate} bpm`);
+      if ((level as AlertLevel) !== AlertLevel.CRITICAL) level = AlertLevel.WARNING;
     }
 
-    const hypoxiaIndex = this.computeHypoxiaIndex(measurement);
+    // --- Respiratory rate checks ---
+    if (
+      measurement.respiratoryRate < THRESHOLDS.respiratoryRate.min ||
+      measurement.respiratoryRate > THRESHOLDS.respiratoryRate.max
+    ) {
+      anomalies.push(`Respiratory rate abnormal: ${measurement.respiratoryRate} breaths/min`);
+      if ((level as AlertLevel) !== AlertLevel.CRITICAL) level = AlertLevel.WARNING;
+    }
+
+    // --- NEWS2 score and escalation ---
+    const news2Score = this.computeNews2Score(measurement);
+    if (news2Score >= 7) {
+      level = AlertLevel.CRITICAL;
+    } else if (news2Score >= 5 && (level as AlertLevel) !== AlertLevel.CRITICAL) {
+      level = AlertLevel.WARNING;
+    }
 
     const result: AnalysisResult = {
       level,
@@ -55,7 +78,7 @@ export class AnalysisService {
         anomalies.length > 0
           ? anomalies.join('; ')
           : 'All parameters within normal range',
-      hypoxiaIndex,
+      news2Score,
       anomalies,
       measurement,
     };
@@ -68,64 +91,50 @@ export class AnalysisService {
       measurementId: measurement.id,
       patientId: measurement.patientId,
       sessionId: measurement.sessionId,
-      hypoxiaIndex,
+      news2Score,
       level,
     }));
 
     return result;
   }
 
-  private detectSlidingWindowAnomaly(measurement: Measurement): string | null {
-    const key = measurement.patientId;
-    const window = this.slidingWindow.get(key) ?? [];
-    window.push(measurement.spo2);
-    if (window.length > 5) window.shift();
-    this.slidingWindow.set(key, window);
-
-    if (window.length < 3) return null;
-
-    const mean = window.reduce((a, b) => a + b, 0) / window.length;
-    const stdDev = Math.sqrt(
-      window.reduce((sum, v) => sum + Math.pow(v - mean, 2), 0) / window.length,
-    );
-
-    if (stdDev > 5) {
-      return `High SpO2 variability detected (std dev: ${stdDev.toFixed(2)})`;
-    }
-    return null;
-  }
-
-  computeHypoxiaIndex(measurement: Measurement): number {
-    const spo2Score = this.scoreSpo2(measurement.spo2);
-    const hrScore = this.scoreHeartRate(measurement.heartRate);
-    const rrScore = this.scoreRespRate(measurement.respiratoryRate);
-    return Math.min(
-      10,
-      parseFloat((spo2Score * 0.6 + hrScore * 0.25 + rrScore * 0.15).toFixed(2)),
+  /**
+   * Computes the NEWS2 composite score (0–9) for the three tracked parameters:
+   * SpO2 (Scale 1), heart rate, and respiratory rate.
+   */
+  computeNews2Score(measurement: Measurement): number {
+    return (
+      this.scoreNews2Spo2(measurement.spo2) +
+      this.scoreNews2HeartRate(measurement.heartRate) +
+      this.scoreNews2RespRate(measurement.respiratoryRate)
     );
   }
 
-  private scoreSpo2(v: number): number {
-    if (v >= 94) return 0;
-    if (v >= 90) return ((94 - v) / 4) * 5;
-    if (v >= 85) return 5 + ((90 - v) / 5) * 3;
-    return Math.min(10, 8 + ((85 - v) / 5) * 2);
+  /** NEWS2 SpO2 score — Scale 1 (no hypercapnic respiratory failure). */
+  private scoreNews2Spo2(v: number): number {
+    if (v <= 91) return 3;
+    if (v <= 93) return 2;
+    if (v <= 95) return 1;
+    return 0;
   }
 
-  private scoreHeartRate(v: number): number {
-    if (v >= 60 && v <= 100) return 0;
-    if (v >= 50 && v < 60)   return ((60 - v) / 10) * 5;
-    if (v > 100 && v <= 120) return ((v - 100) / 20) * 5;
-    if (v < 50)              return Math.min(10, 5 + ((50 - v) / 20) * 5);
-    return Math.min(10, 5 + ((v - 120) / 40) * 5);
+  /** NEWS2 heart rate score. */
+  private scoreNews2HeartRate(v: number): number {
+    if (v <= 40)  return 3;
+    if (v <= 50)  return 1;
+    if (v <= 90)  return 0;
+    if (v <= 110) return 1;
+    if (v <= 130) return 2;
+    return 3;
   }
 
-  private scoreRespRate(v: number): number {
-    if (v >= 12 && v <= 20) return 0;
-    if (v >= 8 && v < 12) return ((12 - v) / 4) * 5;
-    if (v > 20 && v <= 30) return ((v - 20) / 10) * 5;
-    if (v < 8) return Math.min(10, 5 + ((8 - v) / 8) * 5);
-    return Math.min(10, 5 + ((v - 30) / 20) * 5);
+  /** NEWS2 respiratory rate score. */
+  private scoreNews2RespRate(v: number): number {
+    if (v <= 8)  return 3;
+    if (v <= 11) return 1;
+    if (v <= 20) return 0;
+    if (v <= 24) return 2;
+    return 3;
   }
 
   private async sendAlert(result: AnalysisResult): Promise<void> {
@@ -140,7 +149,7 @@ export class AnalysisService {
           spo2: result.measurement.spo2,
           heartRate: result.measurement.heartRate,
           respiratoryRate: result.measurement.respiratoryRate,
-          hypoxiaIndex: result.hypoxiaIndex,
+          news2Score: result.news2Score,
         },
       });
     } catch (err) {

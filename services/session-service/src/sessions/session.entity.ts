@@ -68,7 +68,7 @@ export class Session {
 
   @ApiProperty({ nullable: true })
   @Column({ type: 'float', nullable: true })
-  lastHypoxiaIndex: number;
+  lastNews2Score: number;
 
   @CreateDateColumn()
   createdAt: Date;

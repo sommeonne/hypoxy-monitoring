@@ -40,6 +40,7 @@ export class ExcelGeneratorService {
       { field: 'Min SpO2 (%)', value: session.summary?.minSpo2?.toFixed(1) ?? 'N/A' },
       { field: 'Total Measurements', value: session.summary?.totalMeasurements ?? measurements.length },
       { field: 'Alert Count', value: session.summary?.alertCount ?? alerts.length },
+      { field: 'NEWS2 Score (last)', value: session.lastNews2Score ?? 'N/A' },
     ]);
 
     // Measurements sheet

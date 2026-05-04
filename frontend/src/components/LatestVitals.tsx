@@ -8,11 +8,11 @@ export interface VitalTrends {
   o2?: number[];
   heartRate?: number[];
   respRate?: number[];
-  hypoxiaIndex?: number[];
+  news2Score?: number[];
 }
 
 export interface VitalsData {
-  hypoxiaIndex?: number;
+  news2Score?: number;
   spo2: number;
   o2?: number;
   heartRate: number;
@@ -50,9 +50,9 @@ function rrStatus(v: number): Status {
   if (v < 12 || v > 20) return 'watch';
   return 'normal';
 }
-function hypoxiaStatus(v: number): Status {
-  if (v >= 6) return 'critical';
-  if (v >= 3) return 'watch';
+function news2Status(v: number): Status {
+  if (v >= 7) return 'critical';
+  if (v >= 5) return 'watch';
   return 'normal';
 }
 
@@ -110,13 +110,13 @@ function HeroTile({ value, status }: { value: number; status: Status }) {
       }}
     >
       <span style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
-        Hypoxia Index
+        NEWS2 Score
       </span>
 
       <div style={{ textAlign: 'center', padding: '10px 0 6px' }}>
         <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 2 }}>
           <span
-            aria-label={`Hypoxia index ${value} out of 10, ${STATUS_TOKEN[status].label}`}
+            aria-label={`NEWS2 score ${value} out of 9, ${STATUS_TOKEN[status].label}`}
             style={{
               fontSize: 54,
               fontWeight: 800,
@@ -128,7 +128,7 @@ function HeroTile({ value, status }: { value: number; status: Status }) {
           >
             {value}
           </span>
-          <span style={{ fontSize: 15, color: '#94A3B8', fontWeight: 500, paddingBottom: 8 }}>/10</span>
+          <span style={{ fontSize: 15, color: '#94A3B8', fontWeight: 500, paddingBottom: 8 }}>/9</span>
         </div>
       </div>
 
@@ -204,7 +204,7 @@ function MetricTile({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function LatestVitals({ vitals }: { vitals: VitalsData }) {
-  const hiStatus  = vitals.hypoxiaIndex != null ? hypoxiaStatus(vitals.hypoxiaIndex) : 'normal';
+  const hiStatus  = vitals.news2Score != null ? news2Status(vitals.news2Score) : 'normal';
   const s2Status  = spo2Status(vitals.spo2);
   const hrStatus_ = hrStatus(vitals.heartRate);
   const rrStatus_ = rrStatus(vitals.respRate);
@@ -212,9 +212,9 @@ export default function LatestVitals({ vitals }: { vitals: VitalsData }) {
   return (
     <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
       {/* Hero */}
-      {vitals.hypoxiaIndex != null && (
+      {vitals.news2Score != null && (
         <div style={{ flex: '0 0 170px' }}>
-          <HeroTile value={vitals.hypoxiaIndex} status={hiStatus} />
+          <HeroTile value={vitals.news2Score} status={hiStatus} />
         </div>
       )}
 

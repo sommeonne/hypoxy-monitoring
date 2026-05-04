@@ -73,6 +73,7 @@ export class PdfGeneratorService {
           ['Total Alerts', String(alerts.length)],
           ['Critical', String(critical)],
           ['Warning', String(warning)],
+          ['NEWS2 Score (last)', session.lastNews2Score != null ? `${session.lastNews2Score} / 9` : '—'],
         ], y);
       }
 

@@ -44,7 +44,7 @@ export default function SessionDetailPage() {
   const queryClient = useQueryClient();
   const { on } = useSocket();
   const [liveData, setLiveData] = useState<Measurement[]>([]);
-  const [hypoxiaIndex, setHypoxiaIndex] = useState<number | undefined>();
+  const [news2Score, setNews2Score] = useState<number | undefined>();
   const [alertFilter, setAlertFilter] = useState<AlertFilter>('ALL');
   const [sortDesc, setSortDesc] = useState(true);
   const [noteText, setNoteText] = useState('');
@@ -97,7 +97,7 @@ export default function SessionDetailPage() {
             avgRespiratoryRate: Math.round((data.reduce((s, m) => s + m.respiratoryRate, 0) / data.length) * 10) / 10,
             minSpo2: Math.min(...data.map((m) => m.spo2)),
             maxHeartRate: Math.max(...data.map((m) => m.heartRate)),
-            ...(hypoxiaIndex != null && { hypoxiaIndex }),
+            ...(news2Score != null && { news2Score }),
           }
         : { totalMeasurements: 0, alertCount: alerts.length };
       return endSession(id!, summary);
@@ -120,8 +120,8 @@ export default function SessionDetailPage() {
   }, [on, id, queryClient]);
 
   useEffect(() => {
-    return on('analysis:result', (r: { sessionId: string; hypoxiaIndex: number }) => {
-      if (r.sessionId === id) setHypoxiaIndex(r.hypoxiaIndex);
+    return on('analysis:result', (r: { sessionId: string; news2Score: number }) => {
+      if (r.sessionId === id) setNews2Score(r.news2Score);
     });
   }, [on, id]);
 
@@ -311,6 +311,11 @@ export default function SessionDetailPage() {
                   <Descriptions.Item label="Duration">{session.summary.durationMinutes} min</Descriptions.Item>
                   <Descriptions.Item label="Measurements">{session.summary.totalMeasurements}</Descriptions.Item>
                   <Descriptions.Item label="Alerts">{alerts.length}</Descriptions.Item>
+                  {session.lastNews2Score != null && (
+                    <Descriptions.Item label="NEWS2 Score">
+                      {session.lastNews2Score} / 9
+                    </Descriptions.Item>
+                  )}
                 </>
               )}
             </Descriptions>
@@ -330,7 +335,7 @@ export default function SessionDetailPage() {
                   heartRate:    latest.heartRate,
                   respRate:     latest.respiratoryRate,
                   o2:           latest.o2Percentage,
-                  hypoxiaIndex: hypoxiaIndex ?? session.lastHypoxiaIndex,
+                  news2Score: news2Score ?? session.lastNews2Score,
                   updatedAt:    latest.createdAt,
                   trends: (() => {
                     const win = [...displayData].slice(0, 20).reverse();

@@ -38,8 +38,8 @@ export class EndSessionDto {
   @IsNumber()
   totalMeasurements?: number;
 
-  @ApiProperty({ required: false, description: 'Last hypoxia index value (0–10)' })
+  @ApiProperty({ required: false, description: 'Last NEWS2 score (0–9)' })
   @IsOptional()
   @IsNumber()
-  hypoxiaIndex?: number;
+  news2Score?: number;
 }

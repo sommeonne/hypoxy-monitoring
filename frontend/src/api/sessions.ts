@@ -22,7 +22,7 @@ export interface Session {
   notes?: string;
   o2Percentage?: number;
   plannedDurationSeconds?: number;
-  lastHypoxiaIndex?: number;
+  lastNews2Score?: number;
 }
 
 export const fetchActiveSessions = () => api.get<Session[]>('/sessions/active');
@@ -35,7 +35,7 @@ export const startSession = (data: {
   o2Percentage?: number;
   plannedDurationSeconds?: number;
 }) => api.post<Session>('/sessions', data);
-export type EndSessionData = Partial<Omit<SessionSummary, 'durationMinutes'>> & { hypoxiaIndex?: number };
+export type EndSessionData = Partial<Omit<SessionSummary, 'durationMinutes'>> & { news2Score?: number };
 export const endSession = (id: string, data: EndSessionData = {}) =>
   api.put<Session>(`/sessions/${id}/end`, data);
 export const updateSessionNotes = (id: string, notes: string) =>

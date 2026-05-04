@@ -5,7 +5,7 @@ interface Props {
   spo2: number;
   heartRate: number;
   respiratoryRate: number;
-  hypoxiaIndex?: number;
+  news2Score?: number;
   o2Percentage?: number;
 }
 
@@ -27,9 +27,9 @@ function getRespRateColor(v: number): string {
   return '#1D9E75';
 }
 
-function getHypoxiaColor(v: number): string {
-  if (v >= 6) return '#E24B4A';
-  if (v >= 3) return '#EF9F27';
+function getNews2Color(v: number): string {
+  if (v >= 7) return '#E24B4A';
+  if (v >= 5) return '#EF9F27';
   return '#1D9E75';
 }
 
@@ -87,26 +87,26 @@ function VitalCard({
   );
 }
 
-function getHypoxiaStatus(v: number): { label: string; bg: string; color: string } {
-  if (v >= 6) return { label: 'CRITICAL', bg: '#FEF2F2', color: '#E24B4A' };
-  if (v >= 3) return { label: 'WARNING', bg: '#FFFBEB', color: '#EF9F27' };
+function getNews2Status(v: number): { label: string; bg: string; color: string } {
+  if (v >= 7) return { label: 'CRITICAL', bg: '#FEF2F2', color: '#E24B4A' };
+  if (v >= 5) return { label: 'WARNING', bg: '#FFFBEB', color: '#EF9F27' };
   return { label: 'NORMAL', bg: '#E1F5EE', color: '#1D9E75' };
 }
 
-export default function VitalSign({ spo2, heartRate, respiratoryRate, hypoxiaIndex, o2Percentage }: Props) {
-  const { label, bg, color } = hypoxiaIndex !== undefined
-    ? getHypoxiaStatus(hypoxiaIndex)
+export default function VitalSign({ spo2, heartRate, respiratoryRate, news2Score, o2Percentage }: Props) {
+  const { label, bg, color } = news2Score !== undefined
+    ? getNews2Status(news2Score)
     : getSpo2Status(spo2);
 
   return (
     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      {hypoxiaIndex !== undefined && (
+      {news2Score !== undefined && (
         <VitalCard
-          label="Hypoxia Index"
-          value={hypoxiaIndex}
-          unit="/ 10"
+          label="NEWS2 Score"
+          value={news2Score}
+          unit="/ 9"
           large
-          color={getHypoxiaColor(hypoxiaIndex)}
+          color={getNews2Color(news2Score)}
         />
       )}
 
