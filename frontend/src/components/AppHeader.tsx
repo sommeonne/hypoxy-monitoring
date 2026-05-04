@@ -44,7 +44,7 @@ export default function AppHeader() {
     { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
     { key: '/patients', icon: <TeamOutlined />, label: 'Patients' },
     ...(isAdmin() ? [
-      { key: '/doctors', icon: <MedicineBoxOutlined />, label: 'Doctors' },
+      { key: '/users', icon: <MedicineBoxOutlined />, label: 'Doctors' },
       { key: '/admin-settings', icon: <SettingOutlined />, label: 'Admin Settings' },
     ] : []),
   ];

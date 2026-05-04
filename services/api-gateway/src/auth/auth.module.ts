@@ -5,7 +5,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { JwtStrategy } from './jwt.strategy';
-import { DoctorsModule } from '../doctors/doctors.module';
+import { UsersModule } from '../users/users.module';
 
 @Module({
   imports: [
@@ -18,7 +18,7 @@ import { DoctorsModule } from '../doctors/doctors.module';
         signOptions: { expiresIn: config.get('JWT_EXPIRES_IN', '24h') },
       }),
     }),
-    DoctorsModule,
+    UsersModule,
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],

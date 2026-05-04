@@ -7,8 +7,8 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
 import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './health/health.module';
-import { DoctorsModule } from './doctors/doctors.module';
-import { Doctor } from './doctors/doctor.entity';
+import { UsersModule } from './users/users.module';
+import { User } from './users/user.entity';
 import { ProxyMiddleware } from './proxy/proxy.middleware';
 import { WebsocketModule } from './websocket/websocket.module';
 
@@ -42,14 +42,14 @@ import { WebsocketModule } from './websocket/websocket.module';
         username: config.get('DB_USER', 'hypoxy'),
         password: config.get('DB_PASSWORD', 'hypoxy_password'),
         database: config.get('DB_NAME', 'hypoxy_db'),
-        entities: [Doctor],
+        entities: [User],
         synchronize: true,   //config.get('NODE_ENV') !== 'production',
         logging: config.get('NODE_ENV') !== 'production',
       }),
     }),
     AuthModule,
     HealthModule,
-    DoctorsModule,
+    UsersModule,
     WebsocketModule,
   ],
 })

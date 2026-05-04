@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Table, Button, Modal, Form, Input, Tag, Popconfirm, Typography, Space } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchDoctors, createDoctor, deleteDoctor, Doctor } from '../api/doctors';
+import { fetchUsers, createUser, deleteUser, User } from '../api/users';
 
 const { Text } = Typography;
 
@@ -40,29 +40,29 @@ export default function DoctorsPage() {
   const [form] = Form.useForm();
 
   const { data: all = [], isLoading } = useQuery({
-    queryKey: ['doctors'],
-    queryFn: fetchDoctors,
+    queryKey: ['users'],
+    queryFn: fetchUsers,
   });
   const doctors = all.filter((d) => d.role === 'doctor');
 
   const createMutation = useMutation({
-    mutationFn: createDoctor,
+    mutationFn: createUser,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['doctors'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       setIsOpen(false);
       form.resetFields();
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: deleteDoctor,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['doctors'] }),
+    mutationFn: deleteUser,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   });
 
   const columns = [
     {
       title: <span className="label-caps">Name</span>,
-      render: (_: any, d: Doctor) => (
+      render: (_: any, d: User) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <InitialsAvatar name={`${d.firstName} ${d.lastName}`} />
           <div>
@@ -105,10 +105,10 @@ export default function DoctorsPage() {
     {
       title: '',
       width: 60,
-      render: (_: any, d: Doctor) => (
+      render: (_: any, d: User) => (
         <Popconfirm
           title={
-            <span style={{ fontWeight: 600, color: '#0F172A' }}>Delete doctor account?</span>
+            <span style={{ fontWeight: 600, color: '#0F172A' }}>Delete user account?</span>
           }
           description={
             <span style={{ color: '#64748B', fontSize: 12 }}>

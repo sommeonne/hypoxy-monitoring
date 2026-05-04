@@ -41,7 +41,7 @@ export default function App() {
                     <Route path="/patients" element={<PatientsPage />} />
                     <Route path="/patients/:id" element={<PatientDetailPage />} />
                     <Route path="/sessions/:id" element={<SessionDetailPage />} />
-                    <Route path="/doctors" element={<AdminRoute><DoctorsPage /></AdminRoute>} />
+                    <Route path="/users" element={<AdminRoute><UsersPage /></AdminRoute>} />
                     <Route path="/admin-settings" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
                   </Routes>
                 </div>

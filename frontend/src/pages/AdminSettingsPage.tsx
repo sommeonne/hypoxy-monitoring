@@ -4,7 +4,7 @@ import {
 } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchDoctors, createDoctor, deleteDoctor, Doctor } from '../api/doctors';
+import { fetchUsers, createUser, deleteUser, User } from '../api/users';
 import { getGroups, addGroup, removeGroup } from '../utils/groups';
 
 const { Text } = Typography;
@@ -36,31 +36,31 @@ function AdminsTab() {
   const [form] = Form.useForm();
 
   const { data: all = [], isLoading } = useQuery({
-    queryKey: ['doctors'],
-    queryFn: fetchDoctors,
+    queryKey: ['users'],
+    queryFn: fetchUsers,
   });
 
   const admins = [...all.filter((d) => d.role === 'admin')]
     .sort((a, b) => `${a.lastName} ${a.firstName}`.localeCompare(`${b.lastName} ${b.firstName}`));
 
   const createMutation = useMutation({
-    mutationFn: (v: any) => createDoctor({ ...v, role: 'admin' }),
+    mutationFn: (v: any) => createUser({ ...v, role: 'admin' }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['doctors'] });
+      queryClient.invalidateQueries({ queryKey: ['users'] });
       setIsOpen(false);
       form.resetFields();
     },
   });
 
   const deleteMutation = useMutation({
-    mutationFn: deleteDoctor,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['doctors'] }),
+    mutationFn: deleteUser,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   });
 
   const columns = [
     {
       title: <span className="label-caps">Name</span>,
-      render: (_: any, d: Doctor) => (
+      render: (_: any, d: User) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <InitialsAvatar name={`${d.firstName} ${d.lastName}`} />
           <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 13 }}>
@@ -87,7 +87,7 @@ function AdminsTab() {
     {
       title: '',
       width: 60,
-      render: (_: any, d: Doctor) => (
+      render: (_: any, d: User) => (
         <Popconfirm
           title={<span style={{ fontWeight: 600, color: '#0F172A' }}>Delete admin account?</span>}
           description={<span style={{ color: '#64748B', fontSize: 12 }}>This action cannot be undone.</span>}
