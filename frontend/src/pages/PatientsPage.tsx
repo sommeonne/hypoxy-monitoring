@@ -3,7 +3,7 @@ import { Table, Button, Modal, Form, Input, DatePicker, Typography, Select, Inpu
 import { PlusOutlined, ArrowRightOutlined, SearchOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchPatients, createPatient, Patient } from '../api/patients';
-import { getGroups } from '../utils/groups';
+import { fetchGroups } from '../api/groups';
 import { useNavigate } from 'react-router-dom';
 
 const { Text } = Typography;
@@ -45,7 +45,8 @@ export default function PatientsPage() {
   const [nameSearch, setNameSearch] = useState('');
   const [cardSearch, setCardSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState<number | null>(null);
-  const groups = getGroups();
+
+  const { data: groupsData = [] } = useQuery({ queryKey: ['groups'], queryFn: fetchGroups });
 
   const { data: patients = [], isLoading } = useQuery({
     queryKey: ['patients'],
@@ -67,7 +68,7 @@ export default function PatientsPage() {
     return patients.filter((p) => {
       if (name && !`${p.firstName} ${p.lastName}`.toLowerCase().includes(name)) return false;
       if (card && !(p.cardNumber ?? '').toLowerCase().includes(card)) return false;
-      if (groupFilter != null && p.group !== groupFilter) return false;
+      if (groupFilter != null && p.group?.number !== groupFilter) return false;
       return true;
     });
   }, [patients, nameSearch, cardSearch, groupFilter]);
@@ -93,7 +94,7 @@ export default function PatientsPage() {
       title: <span className="label-caps">Group</span>,
       dataIndex: 'group',
       width: 80,
-      render: (v: number) => <Text style={{ color: '#64748B', fontSize: 13 }}>{v ?? '—'}</Text>,
+      render: (_: any, p: Patient) => <Text style={{ color: '#64748B', fontSize: 13 }}>{p.group?.number ?? '—'}</Text>,
     },
     {
       title: <span className="label-caps">Date of Birth</span>,
@@ -188,8 +189,8 @@ export default function PatientsPage() {
           onClear={() => setGroupFilter(null)}
           style={{ width: 120 }}
         >
-          {groups.map((g) => (
-            <Select.Option key={g} value={g}>Group {g}</Select.Option>
+          {groupsData.map((g) => (
+            <Select.Option key={g.id} value={g.number}>Group {g.number}</Select.Option>
           ))}
         </Select>
       </Space>
@@ -223,6 +224,7 @@ export default function PatientsPage() {
             Register New Patient
           </span>
         }
+        style={{ top: 20 }}
         open={isOpen}
         onCancel={() => setIsOpen(false)}
         onOk={() => form.submit()}
@@ -271,13 +273,13 @@ export default function PatientsPage() {
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
             <Form.Item
-              name="group"
+              name="groupId"
               label={<span style={{ fontWeight: 500, fontSize: 13 }}>Group</span>}
               rules={[{ required: true }]}
             >
               <Select>
-                {groups.map((g) => (
-                  <Select.Option key={g} value={g}>{g}</Select.Option>
+                {groupsData.map((g) => (
+                  <Select.Option key={g.id} value={g.id}>{g.number}</Select.Option>
                 ))}
               </Select>
             </Form.Item>

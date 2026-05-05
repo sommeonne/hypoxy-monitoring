@@ -8,6 +8,7 @@ import { ClientRequest } from 'http';
 const ROUTE_MAP: Record<string, string> = {
   '/api/devices': 'DEVICE_SERVICE_URL',
   '/api/patients': 'PATIENT_SERVICE_URL',
+  '/api/groups': 'PATIENT_SERVICE_URL',
   '/api/analysis': 'ANALYSIS_SERVICE_URL',
   '/api/alerts': 'ALERT_SERVICE_URL',
   '/api/sessions': 'SESSION_SERVICE_URL',

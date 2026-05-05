@@ -21,11 +21,13 @@ import {
   ArrowRightOutlined,
   EditOutlined,
   FileTextOutlined,
+  DeleteOutlined,
 } from "@ant-design/icons";
 import dayjs from "dayjs";
-import { getGroups } from "../utils/groups";
+import { fetchGroups } from "../api/groups";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { fetchPatient, updatePatient } from "../api/patients";
+import { fetchPatient, updatePatient, deletePatient } from "../api/patients";
+import { isAdmin } from "../utils/auth";
 import { fetchPatientSessions, startSession, Session } from "../api/sessions";
 import PatientInfoCard from "../components/PatientInfoCard";
 
@@ -81,6 +83,8 @@ export default function PatientDetailPage() {
     enabled: !!id,
   });
 
+  const { data: groupsData = [] } = useQuery({ queryKey: ['groups'], queryFn: fetchGroups });
+
   const editMutation = useMutation({
     mutationFn: (values: any) =>
       updatePatient(id!, {
@@ -90,6 +94,14 @@ export default function PatientDetailPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["patient", id] });
       setEditOpen(false);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: () => deletePatient(id!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['patients'] });
+      navigate('/patients');
     },
   });
 
@@ -204,7 +216,7 @@ export default function PatientDetailPage() {
           patronymic={patient.patronymic}
           dateOfBirth={patient.dateOfBirth}
           gender={patient.gender}
-          group={patient.group ?? null}
+          group={patient.group?.number ?? null}
           height={patient.height ?? null}
           weight={patient.weight ?? null}
           phone={patient.phone}
@@ -355,6 +367,16 @@ export default function PatientDetailPage() {
         </div>
 
         <div style={{ display: "flex", gap: 8 }}>
+          {isAdmin() && (
+            <Button
+              icon={<DeleteOutlined />}
+              loading={deleteMutation.isPending}
+              onClick={() => deleteMutation.mutate()}
+              style={{ borderColor: '#E24B4A', color: '#E24B4A' }}
+            >
+              Delete
+            </Button>
+          )}
           <Button
             icon={<EditOutlined />}
             onClick={() => {
@@ -442,6 +464,7 @@ export default function PatientDetailPage() {
             Edit Patient
           </span>
         }
+        style={{ top: 20 }}
         open={editOpen}
         onCancel={() => setEditOpen(false)}
         onOk={() => editForm.submit()}
@@ -519,16 +542,16 @@ export default function PatientDetailPage() {
             }}
           >
             <Form.Item
-              name="group"
+              name="groupId"
               label={
                 <span style={{ fontWeight: 500, fontSize: 13 }}>Group</span>
               }
               rules={[{ required: true }]}
             >
               <Select>
-                {getGroups().map((g) => (
-                  <Select.Option key={g} value={g}>
-                    {g}
+                {groupsData.map((g) => (
+                  <Select.Option key={g.id} value={g.id}>
+                    {g.number}
                   </Select.Option>
                 ))}
               </Select>

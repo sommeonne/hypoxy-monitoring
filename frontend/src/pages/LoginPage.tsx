@@ -168,30 +168,6 @@ export default function LoginPage() {
           </Form.Item>
         </Form>
       </Card>
-
-      {/* Medical disclaimer */}
-      <div
-        style={{
-          marginTop: 24,
-          maxWidth: 480,
-          width: '100%',
-          textAlign: 'center',
-          padding: '0 16px',
-        }}
-      >
-        <Text
-          style={{
-            fontSize: 11,
-            color: '#94A3B8',
-            lineHeight: 1.6,
-            display: 'block',
-          }}
-        >
-          This system is intended for use by authorised clinical personnel only.
-          All patient data is confidential and subject to applicable healthcare
-          privacy regulations. Unauthorised access is strictly prohibited.
-        </Text>
-      </div>
     </div>
   );
 }

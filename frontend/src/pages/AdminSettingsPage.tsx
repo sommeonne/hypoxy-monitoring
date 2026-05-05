@@ -5,7 +5,7 @@ import {
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchUsers, createUser, deleteUser, User } from '../api/users';
-import { getGroups, addGroup, removeGroup } from '../utils/groups';
+import { fetchGroups, createGroup, deleteGroup } from '../api/groups';
 
 const { Text } = Typography;
 
@@ -169,17 +169,32 @@ function AdminsTab() {
 }
 
 function GroupsTab() {
-  const [groups, setGroups] = useState<number[]>(getGroups);
+  const queryClient = useQueryClient();
   const [newGroup, setNewGroup] = useState<number | null>(null);
+
+  const { data: groups = [], isLoading } = useQuery({
+    queryKey: ['groups'],
+    queryFn: fetchGroups,
+  });
+
+  const groupNumbers = groups.map((g) => g.number);
+
+  const addMutation = useMutation({
+    mutationFn: (n: number) => createGroup(n),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['groups'] });
+      setNewGroup(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteGroup(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['groups'] }),
+  });
 
   const handleAdd = () => {
     if (newGroup == null) return;
-    setGroups(addGroup(newGroup));
-    setNewGroup(null);
-  };
-
-  const handleRemove = (g: number) => {
-    setGroups(removeGroup(g));
+    addMutation.mutate(newGroup);
   };
 
   return (
@@ -198,20 +213,21 @@ function GroupsTab() {
           type="primary"
           icon={<PlusOutlined />}
           onClick={handleAdd}
-          disabled={newGroup == null || groups.includes(newGroup)}
+          loading={addMutation.isPending}
+          disabled={newGroup == null || groupNumbers.includes(newGroup)}
           style={{ fontWeight: 600 }}
         >
           Add Group
         </Button>
       </div>
 
-      {groups.length === 0 ? (
+      {isLoading ? null : groups.length === 0 ? (
         <Text style={{ color: '#94A3B8' }}>No groups defined.</Text>
       ) : (
         <Space wrap size={[10, 10]}>
-          {groups.map((g) => (
+          {groups.map(({ id, number: g }) => (
             <div
-              key={g}
+              key={id}
               style={{
                 display: 'flex', alignItems: 'center', gap: 6,
                 background: '#F8FAFC', border: '1px solid #E2E8F0',
@@ -219,23 +235,15 @@ function GroupsTab() {
               }}
             >
               <span style={{ fontWeight: 600, color: '#0F172A', fontSize: 14 }}>Group {g}</span>
-              <Popconfirm
-                title={<span style={{ fontWeight: 600 }}>Remove Group {g}?</span>}
-                description={<span style={{ color: '#64748B', fontSize: 12 }}>Existing patients in this group won't be affected.</span>}
-                onConfirm={() => handleRemove(g)}
-                okText="Remove"
-                cancelText="Cancel"
-                okButtonProps={{ style: { background: '#E24B4A', borderColor: '#E24B4A', fontWeight: 600 } }}
-              >
-                <Button
-                  type="text"
-                  icon={<DeleteOutlined />}
-                  size="small"
-                  style={{ color: '#94A3B8', padding: 0, height: 20 }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = '#E24B4A')}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = '#94A3B8')}
-                />
-              </Popconfirm>
+              <Button
+                type="text"
+                icon={<DeleteOutlined />}
+                size="small"
+                onClick={() => deleteMutation.mutate(id)}
+                style={{ color: '#94A3B8', padding: 0, height: 20 }}
+                onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = '#E24B4A')}
+                onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = '#94A3B8')}
+              />
             </div>
           ))}
         </Space>

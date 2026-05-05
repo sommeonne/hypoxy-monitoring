@@ -58,6 +58,7 @@ export class AppModule {
     consumer.apply(ProxyMiddleware).forRoutes(
       { path: 'api/devices*', method: RequestMethod.ALL },
       { path: 'api/patients*', method: RequestMethod.ALL },
+      { path: 'api/groups*', method: RequestMethod.ALL },
       { path: 'api/analysis*', method: RequestMethod.ALL },
       { path: 'api/alerts*', method: RequestMethod.ALL },
       { path: 'api/sessions*', method: RequestMethod.ALL },

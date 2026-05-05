@@ -7,7 +7,8 @@ export interface Patient {
   lastName: string;
   patronymic: string;
   dateOfBirth: string;
-  group: number;
+  groupId?: string;
+  group?: { id: string; number: number };
   height: number;
   weight: number;
   gender: string;
@@ -19,7 +20,7 @@ export interface Patient {
   createdAt: string;
 }
 
-export type PatientPayload = Omit<Patient, 'id' | 'createdAt'>;
+export type PatientPayload = Omit<Patient, 'id' | 'createdAt' | 'group'>;
 
 export const fetchPatients = () => api.get<Patient[]>('/patients');
 export const fetchPatient = (id: string) => api.get<Patient>(`/patients/${id}`);

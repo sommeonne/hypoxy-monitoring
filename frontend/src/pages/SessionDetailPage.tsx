@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Card, Button, Tag, Table, Typography, Row, Col, Descriptions, Spin, Input, Modal, Badge, message } from 'antd';
-import { DownloadOutlined, StopOutlined, SortAscendingOutlined, SortDescendingOutlined, FileTextOutlined, MailOutlined } from '@ant-design/icons';
+import { DownloadOutlined, StopOutlined, SortAscendingOutlined, SortDescendingOutlined, FileTextOutlined, MailOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSession, endSession, updateSessionNotes } from '../api/sessions';
 import { fetchSessionMeasurements, Measurement } from '../api/measurements';
@@ -14,6 +14,13 @@ const { Text } = Typography;
 
 type AlertFilter = 'ALL' | 'CRITICAL' | 'WARNING';
 
+
+function formatCountdown(seconds: number): string {
+  const abs = Math.abs(seconds);
+  const m = Math.floor(abs / 60).toString().padStart(2, '0');
+  const s = (abs % 60).toString().padStart(2, '0');
+  return `${seconds < 0 ? '-' : ''}${m}:${s}`;
+}
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
@@ -51,6 +58,8 @@ export default function SessionDetailPage() {
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const autoEndedRef = useRef(false);
 
   const { data: session, isLoading } = useQuery({
     queryKey: ['session', id],
@@ -89,6 +98,18 @@ export default function SessionDetailPage() {
     mutationFn: () => updateSessionNotes(id!, noteText),
     onSuccess: () => {
       localStorage.removeItem(`session-note-draft-${id}`);
+      setHasDraft(false);
+      queryClient.invalidateQueries({ queryKey: ['patientSessions'] });
+      queryClient.invalidateQueries({ queryKey: ['session', id] });
+      setNoteModalOpen(false);
+    },
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: () => updateSessionNotes(id!, ''),
+    onSuccess: () => {
+      localStorage.removeItem(`session-note-draft-${id}`);
+      setNoteText('');
       setHasDraft(false);
       queryClient.invalidateQueries({ queryKey: ['patientSessions'] });
       queryClient.invalidateQueries({ queryKey: ['session', id] });
@@ -135,6 +156,42 @@ export default function SessionDetailPage() {
       if (r.sessionId === id) setNews2Score(r.news2Score);
     });
   }, [on, id]);
+
+  useEffect(() => {
+    if (!session || session.status !== 'active' || !session.plannedDurationSeconds) {
+      setRemainingSeconds(null);
+      return;
+    }
+    autoEndedRef.current = false;
+
+    const calcRemaining = () => {
+      const elapsed = Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000);
+      return session.plannedDurationSeconds! - elapsed;
+    };
+
+    const initial = calcRemaining();
+    setRemainingSeconds(initial);
+
+    if (initial <= 0 && !autoEndedRef.current) {
+      autoEndedRef.current = true;
+      endMutation.mutate();
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const r = calcRemaining();
+      setRemainingSeconds(r);
+      if (r <= 0 && !autoEndedRef.current) {
+        autoEndedRef.current = true;
+        clearInterval(interval);
+        message.info('Planned session duration reached — ending session automatically.');
+        endMutation.mutate();
+      }
+    }, 1000);
+
+    return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.id, session?.status, session?.plannedDurationSeconds, session?.startedAt]);
 
   if (isLoading)
     return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
@@ -295,6 +352,23 @@ export default function SessionDetailPage() {
         okText="Save Note"
         confirmLoading={notesMutation.isPending}
         okButtonProps={{ style: { background: '#1D9E75', borderColor: '#1D9E75', fontWeight: 600 } }}
+        footer={(_, { OkBtn, CancelBtn }) => (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Button
+              icon={<DeleteOutlined />}
+              danger
+              loading={deleteNoteMutation.isPending}
+              disabled={!session?.notes}
+              onClick={() => deleteNoteMutation.mutate()}
+            >
+              Delete Note
+            </Button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <CancelBtn />
+              <OkBtn />
+            </div>
+          </div>
+        )}
         destroyOnClose={false}
         centered
       >
@@ -338,9 +412,40 @@ export default function SessionDetailPage() {
                   {new Date(session.endedAt).toLocaleString()}
                 </Descriptions.Item>
               )}
+              {session.plannedDurationSeconds != null && (
+                <Descriptions.Item label="Planned Duration">
+                  {formatCountdown(session.plannedDurationSeconds)}
+                </Descriptions.Item>
+              )}
+              {isActive && remainingSeconds !== null && (
+                <Descriptions.Item label="Time Remaining">
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      fontVariantNumeric: 'tabular-nums',
+                      color:
+                        remainingSeconds <= 0
+                          ? '#E24B4A'
+                          : remainingSeconds <= 30
+                          ? '#E24B4A'
+                          : remainingSeconds <= 60
+                          ? '#EF9F27'
+                          : '#1D9E75',
+                    }}
+                  >
+                    {remainingSeconds <= 0
+                      ? `Overtime ${formatCountdown(remainingSeconds)}`
+                      : formatCountdown(remainingSeconds)}
+                  </span>
+                </Descriptions.Item>
+              )}
               {session.summary && (
                 <>
-                  <Descriptions.Item label="Duration">{session.summary.durationMinutes} min</Descriptions.Item>
+                  <Descriptions.Item label="Duration">
+                    {session.endedAt
+                      ? formatCountdown(Math.floor((new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime()) / 1000))
+                      : `${session.summary.durationMinutes} min`}
+                  </Descriptions.Item>
                   <Descriptions.Item label="Measurements">{session.summary.totalMeasurements}</Descriptions.Item>
                   <Descriptions.Item label="Alerts">{alerts.length}</Descriptions.Item>
                   {session.lastNews2Score != null && (

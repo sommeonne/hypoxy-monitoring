@@ -1,9 +1,11 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
   CreateDateColumn, UpdateDateColumn, DeleteDateColumn,
+  ManyToOne, JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
 import { encryptTransformer } from '../common/crypto.transformer';
+import { Group } from '../groups/group.entity';
 
 @Entity('patients')
 export class Patient {
@@ -33,7 +35,12 @@ export class Patient {
 
   @ApiProperty({ nullable: true })
   @Column({ nullable: true })
-  group: number;
+  groupId: string;
+
+  @ApiProperty({ nullable: true, type: () => Group })
+  @ManyToOne(() => Group, { nullable: true, eager: true, onDelete: 'SET NULL' })
+  @JoinColumn({ name: 'groupId' })
+  group: Group;
 
   @ApiProperty({ nullable: true })
   @Column({ nullable: true })

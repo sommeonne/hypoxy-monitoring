@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty, IsDateString, IsNumber, IsEmail, IsEnum } from 'class-validator';
+import { IsString, IsNotEmpty, IsDateString, IsNumber, IsEmail, IsEnum, IsUUID, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 
@@ -27,10 +27,10 @@ export class CreatePatientDto {
   @IsDateString()
   dateOfBirth: string;
 
-  @ApiProperty()
-  @IsNumber()
-  @Type(() => Number)
-  group: number;
+  @ApiProperty({ nullable: true })
+  @IsOptional()
+  @IsUUID()
+  groupId: string;
 
   @ApiProperty()
   @IsNumber()
@@ -65,8 +65,8 @@ export class CreatePatientDto {
   @IsNotEmpty()
   diagnosis: string;
 
-  @ApiProperty()
+  @ApiProperty({ nullable: true })
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
   notes: string;
 }

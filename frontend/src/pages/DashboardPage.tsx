@@ -169,7 +169,6 @@ export default function DashboardPage() {
         styles={{ body: { padding: 20 } }}
         title={
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div className="pulse-dot-wrap"><div className="pulse-dot-inner" /></div>
             <span style={{ fontSize: 15, fontWeight: 600, color: '#0F172A' }}>Active Sessions</span>
             <span
               style={{
