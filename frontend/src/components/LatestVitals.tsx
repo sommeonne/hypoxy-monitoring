@@ -1,5 +1,5 @@
 import React from 'react';
-import { HeartOutlined, ThunderboltOutlined, ExperimentOutlined } from '@ant-design/icons';
+
 
 // ─── Public types ────────────────────────────────────────────────────────────
 
@@ -243,7 +243,7 @@ export default function LatestVitals({ vitals }: { vitals: VitalsData }) {
             unit="%"
             status="info"
             ariaLabel={`Inhaled O2 concentration ${vitals.o2} percent`}
-            icon={<ExperimentOutlined style={{ fontSize: 11 }} />}
+
           />
         ) : (
           <div />
@@ -255,7 +255,7 @@ export default function LatestVitals({ vitals }: { vitals: VitalsData }) {
           unit="bpm"
           status={hrStatus_}
           ariaLabel={`Heart rate ${vitals.heartRate} beats per minute, ${STATUS_TOKEN[hrStatus_].label}`}
-          icon={<HeartOutlined style={{ fontSize: 11 }} />}
+
         />
 
         <MetricTile
@@ -264,7 +264,7 @@ export default function LatestVitals({ vitals }: { vitals: VitalsData }) {
           unit="/min"
           status={rrStatus_}
           ariaLabel={`Respiratory rate ${vitals.respRate} breaths per minute, ${STATUS_TOKEN[rrStatus_].label}`}
-          icon={<ThunderboltOutlined style={{ fontSize: 11 }} />}
+
         />
       </div>
     </div>

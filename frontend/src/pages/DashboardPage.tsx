@@ -70,6 +70,7 @@ export default function DashboardPage() {
   const queryClient = useQueryClient();
   const { on } = useSocket();
   const [alertFilter, setAlertFilter] = useState<AlertFilter>('ALL');
+  const [alertPage, setAlertPage] = useState(1);
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ['activeSessions'],
@@ -115,7 +116,7 @@ export default function DashboardPage() {
     if (alertFilter === 'CRITICAL') return a.level === 'CRITICAL';
     if (alertFilter === 'WARNING') return a.level === 'WARNING';
     return true;
-  }).slice(0, 10);
+  });
 
   const filterButtons: { key: AlertFilter; label: string; cls: string }[] = [
     { key: 'ALL', label: `All (${alerts.length})`, cls: 'f-all' },
@@ -259,7 +260,7 @@ export default function DashboardPage() {
                 <button
                   key={key}
                   className={`filter-btn ${alertFilter === key ? cls : ''}`}
-                  onClick={() => setAlertFilter(key)}
+                  onClick={() => { setAlertFilter(key); setAlertPage(1); }}
                 >
                   {label}
                 </button>
@@ -272,7 +273,15 @@ export default function DashboardPage() {
           dataSource={filteredAlerts}
           rowKey="id"
           size="small"
-          pagination={false}
+          pagination={{
+            current: alertPage,
+            pageSize: 10,
+            total: filteredAlerts.length,
+            onChange: (page) => setAlertPage(page),
+            showSizeChanger: false,
+            showTotal: (total) => `Total ${total}`,
+            size: 'small',
+          }}
           className="teal-table"
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No alerts" /> }}
           columns={[

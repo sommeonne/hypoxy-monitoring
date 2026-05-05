@@ -1,7 +1,7 @@
 import React from 'react';
 import { Layout, Menu, Avatar, Dropdown } from 'antd';
 import {
-  DashboardOutlined,
+  MonitorOutlined,
   TeamOutlined,
   MedicineBoxOutlined,
   SettingOutlined,
@@ -41,7 +41,7 @@ export default function AppHeader() {
   const location = useLocation();
 
   const menuItems = [
-    { key: '/dashboard', icon: <DashboardOutlined />, label: 'Dashboard' },
+    { key: '/dashboard', icon: <MonitorOutlined />, label: 'Dashboard' },
     { key: '/patients', icon: <TeamOutlined />, label: 'Patients' },
     ...(isAdmin() ? [
       { key: '/users', icon: <MedicineBoxOutlined />, label: 'Doctors' },

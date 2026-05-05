@@ -1,5 +1,5 @@
 import React from 'react';
-import { HeartOutlined, ThunderboltOutlined } from '@ant-design/icons';
+
 
 interface Props {
   spo2: number;
@@ -120,7 +120,7 @@ export default function VitalSign({ spo2, heartRate, respiratoryRate, news2Score
         label="Heart Rate"
         value={heartRate}
         unit="bpm"
-        icon={<HeartOutlined style={{ color: getHeartRateColor(heartRate) }} />}
+
         color={getHeartRateColor(heartRate)}
       />
 
@@ -128,7 +128,7 @@ export default function VitalSign({ spo2, heartRate, respiratoryRate, news2Score
         label="Resp. Rate"
         value={respiratoryRate}
         unit="/min"
-        icon={<ThunderboltOutlined style={{ color: getRespRateColor(respiratoryRate) }} />}
+
         color={getRespRateColor(respiratoryRate)}
       />
 
