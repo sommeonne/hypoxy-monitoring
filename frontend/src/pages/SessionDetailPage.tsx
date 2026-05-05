@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, Button, Tag, Table, Typography, Row, Col, Descriptions, Spin, Input, Modal, message } from 'antd';
+import { Card, Button, Tag, Table, Typography, Row, Col, Descriptions, Spin, Input, Modal, Badge, message } from 'antd';
 import { DownloadOutlined, StopOutlined, SortAscendingOutlined, SortDescendingOutlined, FileTextOutlined, MailOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSession, endSession, updateSessionNotes } from '../api/sessions';
@@ -49,6 +49,7 @@ export default function SessionDetailPage() {
   const [sortDesc, setSortDesc] = useState(true);
   const [noteText, setNoteText] = useState('');
   const [noteModalOpen, setNoteModalOpen] = useState(false);
+  const [hasDraft, setHasDraft] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
 
   const { data: session, isLoading } = useQuery({
@@ -74,13 +75,23 @@ export default function SessionDetailPage() {
   }, [measurements]);
 
   useEffect(() => {
-    if (session?.notes != null) setNoteText(session.notes);
-  }, [session?.notes]);
+    if (!id) return;
+    const draft = localStorage.getItem(`session-note-draft-${id}`);
+    if (draft !== null) {
+      setNoteText(draft);
+      setHasDraft(draft !== (session?.notes ?? ''));
+    } else if (session?.notes != null) {
+      setNoteText(session.notes);
+    }
+  }, [id, session?.notes]);
 
   const notesMutation = useMutation({
     mutationFn: () => updateSessionNotes(id!, noteText),
     onSuccess: () => {
+      localStorage.removeItem(`session-note-draft-${id}`);
+      setHasDraft(false);
       queryClient.invalidateQueries({ queryKey: ['patientSessions'] });
+      queryClient.invalidateQueries({ queryKey: ['session', id] });
       setNoteModalOpen(false);
     },
   });
@@ -230,13 +241,15 @@ export default function SessionDetailPage() {
           >
             Send Report
           </Button>
-          <Button
-            icon={<FileTextOutlined />}
-            style={{ borderColor: '#E2E8F0', color: '#374151' }}
-            onClick={() => setNoteModalOpen(true)}
-          >
-            Note
-          </Button>
+          <Badge dot={hasDraft} color="#EF9F27" offset={[-4, 4]}>
+            <Button
+              icon={<FileTextOutlined />}
+              style={{ borderColor: '#E2E8F0', color: '#374151' }}
+              onClick={() => setNoteModalOpen(true)}
+            >
+              Note
+            </Button>
+          </Badge>
           {isActive && (
             <Button
               icon={<StopOutlined />}
@@ -256,9 +269,28 @@ export default function SessionDetailPage() {
       </div>
 
       <Modal
-        title={<span style={{ fontWeight: 700, fontSize: 16, color: '#0F172A' }}>Session Note</span>}
+        title={
+          <span style={{ fontWeight: 700, fontSize: 16, color: '#0F172A' }}>
+            Session Note
+            {hasDraft && (
+              <span style={{ color: '#EF9F27', fontSize: 12, fontWeight: 400, marginLeft: 8 }}>
+                Draft
+              </span>
+            )}
+          </span>
+        }
         open={noteModalOpen}
-        onCancel={() => setNoteModalOpen(false)}
+        onCancel={() => {
+          const savedNotes = session?.notes ?? '';
+          if (noteText !== savedNotes) {
+            localStorage.setItem(`session-note-draft-${id}`, noteText);
+            setHasDraft(true);
+          } else {
+            localStorage.removeItem(`session-note-draft-${id}`);
+            setHasDraft(false);
+          }
+          setNoteModalOpen(false);
+        }}
         onOk={() => notesMutation.mutate()}
         okText="Save Note"
         confirmLoading={notesMutation.isPending}

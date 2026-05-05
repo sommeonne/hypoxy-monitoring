@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
 import { AlertsModule } from './alerts/alerts.module';
 import { Alert } from './alerts/alert.entity';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -32,6 +33,7 @@ import { Alert } from './alerts/alert.entity';
       }),
     }),
     AlertsModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

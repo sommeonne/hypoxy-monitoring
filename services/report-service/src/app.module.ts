@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { LoggerModule } from 'nestjs-pino';
 import { ReportsModule } from './reports/reports.module';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { ReportsModule } from './reports/reports.module';
       },
     }),
     ReportsModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

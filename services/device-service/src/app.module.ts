@@ -5,6 +5,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { LoggerModule } from 'nestjs-pino';
 import { MeasurementsModule } from './measurements/measurements.module';
 import { Measurement } from './measurements/measurement.entity';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { Measurement } from './measurements/measurement.entity';
       }),
     }),
     MeasurementsModule,
+    HealthModule,
   ],
 })
 export class AppModule {}

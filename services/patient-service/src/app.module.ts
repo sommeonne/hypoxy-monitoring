@@ -4,6 +4,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
 import { PatientsModule } from './patients/patients.module';
 import { Patient } from './patients/patient.entity';
+import { HealthModule } from './health/health.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { Patient } from './patients/patient.entity';
       }),
     }),
     PatientsModule,
+    HealthModule,
   ],
 })
 export class AppModule {}
