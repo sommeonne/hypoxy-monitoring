@@ -21,8 +21,8 @@
  *   DEFAULT_O2     Fallback O₂% when session has none set (default: 21)
  */
 
-const GATEWAY_URL = process.env.GATEWAY_URL  
-const DEVICE_URL  = process.env.DEVICE_URL
+const GATEWAY_URL = process.env.GATEWAY_URL ?? 'http://localhost:3000'
+const DEVICE_URL  = process.env.DEVICE_URL  ?? 'http://localhost:3001'
 const INTERVAL_MS = Number(process.env.INTERVAL_MS ?? 2000);
 const USERNAME    = process.env.SIM_USERNAME 
 const PASSWORD    = process.env.SIM_PASSWORD 

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
-  Tabs, Table, Button, Modal, Form, Input, Popconfirm, Typography, Tag, Space, InputNumber,
+  Tabs, Table, Button, Modal, Form, Input, Popconfirm, Typography, Space, InputNumber,
 } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchUsers, createUser, deleteUser, User } from '../api/users';
 import { fetchGroups, createGroup, deleteGroup } from '../api/groups';
+import { fetchSpecializations, createSpecialization, deleteSpecialization } from '../api/specializations';
 
 const { Text } = Typography;
 
@@ -150,9 +151,6 @@ function AdminsTab() {
               <Input />
             </Form.Item>
           </div>
-          <Form.Item name="unifiedNumber" label={<span style={{ fontWeight: 500, fontSize: 13 }}>Unified Doctor Number</span>} rules={[{ required: true }]}>
-            <Input />
-          </Form.Item>
           <Form.Item name="email" label={<span style={{ fontWeight: 500, fontSize: 13 }}>Email</span>} rules={[{ required: true }, { type: 'email', message: 'Invalid email' }]}>
             <Input placeholder="admin@hospital.com" />
           </Form.Item>
@@ -252,6 +250,98 @@ function GroupsTab() {
   );
 }
 
+function SpecializationsTab() {
+  const queryClient = useQueryClient();
+  const [newName, setNewName] = useState('');
+
+  const { data: specializations = [], isLoading } = useQuery({
+    queryKey: ['specializations'],
+    queryFn: fetchSpecializations,
+  });
+
+  const addMutation = useMutation({
+    mutationFn: (name: string) => createSpecialization(name),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['specializations'] });
+      setNewName('');
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id: string) => deleteSpecialization(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['specializations'] }),
+  });
+
+  const handleAdd = () => {
+    const trimmed = newName.trim();
+    if (!trimmed) return;
+    addMutation.mutate(trimmed);
+  };
+
+  const names = specializations.map((s) => s.name.toLowerCase());
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 24 }}>
+        <Input
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onPressEnter={handleAdd}
+          placeholder="Specialization name"
+          style={{ width: 240 }}
+        />
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={handleAdd}
+          loading={addMutation.isPending}
+          disabled={!newName.trim() || names.includes(newName.trim().toLowerCase())}
+          style={{ fontWeight: 600 }}
+        >
+          Add
+        </Button>
+      </div>
+
+      {isLoading ? null : specializations.length === 0 ? (
+        <Text style={{ color: '#94A3B8' }}>No specializations defined.</Text>
+      ) : (
+        <Space wrap size={[10, 10]}>
+          {specializations.map(({ id, name }) => (
+            <div
+              key={id}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                background: '#F8FAFC', border: '1px solid #E2E8F0',
+                borderRadius: 8, padding: '6px 12px',
+              }}
+            >
+              <span style={{ fontWeight: 600, color: '#0F172A', fontSize: 14 }}>{name}</span>
+              <Popconfirm
+                title={<span style={{ fontWeight: 600, color: '#0F172A' }}>Delete specialization?</span>}
+                description={<span style={{ color: '#64748B', fontSize: 12 }}>This action cannot be undone.</span>}
+                onConfirm={() => deleteMutation.mutate(id)}
+                okText="Delete"
+                cancelText="Cancel"
+                okButtonProps={{ style: { background: '#E24B4A', borderColor: '#E24B4A', fontWeight: 600 } }}
+                placement="top"
+              >
+                <Button
+                  type="text"
+                  icon={<DeleteOutlined />}
+                  size="small"
+                  style={{ color: '#94A3B8', padding: 0, height: 20 }}
+                  onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = '#E24B4A')}
+                  onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = '#94A3B8')}
+                />
+              </Popconfirm>
+            </div>
+          ))}
+        </Space>
+      )}
+    </div>
+  );
+}
+
 export default function AdminSettingsPage() {
   return (
     <div>
@@ -262,6 +352,7 @@ export default function AdminSettingsPage() {
         defaultActiveKey="admins"
         items={[
           { key: 'admins', label: 'Admins', children: <AdminsTab /> },
+          { key: 'specializations', label: 'Specializations', children: <SpecializationsTab /> },
           { key: 'groups', label: 'Groups', children: <GroupsTab /> },
         ]}
       />

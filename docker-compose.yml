@@ -64,14 +64,41 @@ services:
     ports:
       - "6379:6379"
 
+  user-service:
+    build:
+      context: ./services/user-service
+      dockerfile: Dockerfile
+    <<: [*restart-policy, *service-depends]
+    environment:
+      <<: *common-env
+      PORT: 3007
+    ports:
+      - "3007:3007"
+    networks:
+      - hypoxy-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:3007/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
   api-gateway:
     build:
       context: ./services/api-gateway
       dockerfile: Dockerfile
     <<: [*restart-policy, *service-depends]
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      user-service:
+        condition: service_healthy
     environment:
       <<: *common-env
       PORT: 3000
+      USER_SERVICE_URL: ${USER_SERVICE_URL:-http://user-service:3007}
       DEVICE_SERVICE_URL: ${DEVICE_SERVICE_URL:-http://device-service:3001}
       PATIENT_SERVICE_URL: ${PATIENT_SERVICE_URL:-http://patient-service:3002}
       ANALYSIS_SERVICE_URL: ${ANALYSIS_SERVICE_URL:-http://analysis-service:3003}

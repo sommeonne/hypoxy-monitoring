@@ -2,13 +2,8 @@ import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
-import { AuthModule } from './auth/auth.module';
 import { HealthModule } from './health/health.module';
-import { UsersModule } from './users/users.module';
-import { User } from './users/user.entity';
 import { ProxyMiddleware } from './proxy/proxy.middleware';
 import { WebsocketModule } from './websocket/websocket.module';
 
@@ -25,7 +20,6 @@ import { WebsocketModule } from './websocket/websocket.module';
       },
     }),
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
-    PassportModule,
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -33,29 +27,16 @@ import { WebsocketModule } from './websocket/websocket.module';
         signOptions: { expiresIn: config.get('JWT_EXPIRES_IN', '24h') },
       }),
     }),
-    TypeOrmModule.forRootAsync({
-      inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
-        type: 'postgres',
-        host: config.get('DB_HOST', 'localhost'),
-        port: config.get<number>('DB_PORT', 5432),
-        username: config.get('DB_USER', 'hypoxy'),
-        password: config.get('DB_PASSWORD', 'hypoxy_password'),
-        database: config.get('DB_NAME', 'hypoxy_db'),
-        entities: [User],
-        synchronize: true,   //config.get('NODE_ENV') !== 'production',
-        logging: config.get('NODE_ENV') !== 'production',
-      }),
-    }),
-    AuthModule,
     HealthModule,
-    UsersModule,
     WebsocketModule,
   ],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {
     consumer.apply(ProxyMiddleware).forRoutes(
+      { path: 'api/auth*', method: RequestMethod.ALL },
+      { path: 'api/users*', method: RequestMethod.ALL },
+      { path: 'api/specializations*', method: RequestMethod.ALL },
       { path: 'api/devices*', method: RequestMethod.ALL },
       { path: 'api/patients*', method: RequestMethod.ALL },
       { path: 'api/groups*', method: RequestMethod.ALL },

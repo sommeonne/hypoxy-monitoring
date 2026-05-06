@@ -6,6 +6,9 @@ import { createProxyMiddleware } from 'http-proxy-middleware';
 import { ClientRequest } from 'http';
 
 const ROUTE_MAP: Record<string, string> = {
+  '/api/auth': 'USER_SERVICE_URL',
+  '/api/users': 'USER_SERVICE_URL',
+  '/api/specializations': 'USER_SERVICE_URL',
   '/api/devices': 'DEVICE_SERVICE_URL',
   '/api/patients': 'PATIENT_SERVICE_URL',
   '/api/groups': 'PATIENT_SERVICE_URL',
@@ -16,6 +19,7 @@ const ROUTE_MAP: Record<string, string> = {
 };
 
 const DEFAULT_URLS: Record<string, string> = {
+  USER_SERVICE_URL: 'http://user-service:3007',
   DEVICE_SERVICE_URL: 'http://device-service:3001',
   PATIENT_SERVICE_URL: 'http://patient-service:3002',
   ANALYSIS_SERVICE_URL: 'http://analysis-service:3003',
@@ -23,6 +27,9 @@ const DEFAULT_URLS: Record<string, string> = {
   SESSION_SERVICE_URL: 'http://session-service:3005',
   REPORT_SERVICE_URL: 'http://report-service:3006',
 };
+
+// Routes that do not require a valid JWT before proxying
+const PUBLIC_ROUTE_PREFIXES = ['/api/auth'];
 
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
@@ -34,27 +41,34 @@ export class ProxyMiddleware implements NestMiddleware {
   ) {}
 
   use(req: Request, res: Response, next: NextFunction) {
-    const authHeader = req.headers['authorization'];
-    const queryToken = req.query['token'] as string | undefined;
-    const rawToken = authHeader?.startsWith('Bearer ')
-      ? authHeader.slice(7)
-      : queryToken;
-
-    if (!rawToken) {
-      res.status(401).json({ message: 'Unauthorized' });
-      return;
-    }
-    let jwtPayload: { sub: string; role: string } | null = null;
-    try {
-      jwtPayload = this.jwtService.verify(rawToken);
-    } catch {
-      res.status(401).json({ message: 'Unauthorized' });
-      return;
-    }
-
     const path = req.path;
+
     const routeKey = Object.keys(ROUTE_MAP).find((prefix) => path.startsWith(prefix));
     if (!routeKey) return next();
+
+    const isPublic = PUBLIC_ROUTE_PREFIXES.some((prefix) => path.startsWith(prefix));
+
+    let jwtPayload: { sub: string; role: string } | null = null;
+
+    if (!isPublic) {
+      const authHeader = req.headers['authorization'];
+      const queryToken = req.query['token'] as string | undefined;
+      const rawToken = authHeader?.startsWith('Bearer ')
+        ? authHeader.slice(7)
+        : queryToken;
+
+      if (!rawToken) {
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+
+      try {
+        jwtPayload = this.jwtService.verify(rawToken);
+      } catch {
+        res.status(401).json({ message: 'Unauthorized' });
+        return;
+      }
+    }
 
     const envKey = ROUTE_MAP[routeKey];
     const target = this.config.get(envKey, DEFAULT_URLS[envKey]);

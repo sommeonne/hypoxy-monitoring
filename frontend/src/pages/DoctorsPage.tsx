@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Table, Button, Modal, Form, Input, Tag, Popconfirm, Typography, Space } from 'antd';
+import { Table, Button, Modal, Form, Input, Select, Popconfirm, Typography } from 'antd';
 import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchUsers, createUser, deleteUser, User } from '../api/users';
+import { fetchSpecializations } from '../api/specializations';
 
 const { Text } = Typography;
 
@@ -43,6 +44,10 @@ export default function DoctorsPage() {
     queryKey: ['users'],
     queryFn: fetchUsers,
   });
+  const { data: specializations = [] } = useQuery({
+    queryKey: ['specializations'],
+    queryFn: fetchSpecializations,
+  });
   const doctors = all.filter((d) => d.role === 'doctor');
 
   const createMutation = useMutation({
@@ -74,10 +79,10 @@ export default function DoctorsPage() {
       ),
     },
     {
-      title: <span className="label-caps">Unified №</span>,
-      dataIndex: 'unifiedNumber',
+      title: <span className="label-caps">Specialization</span>,
+      dataIndex: 'specialization',
       render: (v: string) => (
-        <Text style={{ color: '#64748B', fontSize: 13, fontFamily: 'monospace' }}>{v || '—'}</Text>
+        <Text style={{ color: '#64748B', fontSize: 13 }}>{v || '—'}</Text>
       ),
     },
     {
@@ -220,11 +225,15 @@ export default function DoctorsPage() {
             </Form.Item>
           </div>
           <Form.Item
-            name="unifiedNumber"
-            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Unified Doctor Number</span>}
-            rules={[{ required: true }]}
+            name="specialization"
+            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Specialization</span>}
           >
-            <Input />
+            <Select
+              placeholder="Select specialization"
+              allowClear
+              showSearch
+              options={specializations.map((s) => ({ value: s.name, label: s.name }))}
+            />
           </Form.Item>
           <Form.Item
             name="email"

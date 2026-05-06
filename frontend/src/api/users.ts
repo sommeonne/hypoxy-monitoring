@@ -6,7 +6,7 @@ export interface User {
   firstName: string;
   lastName: string;
   email: string;
-  unifiedNumber: string;
+  specialization?: string;
   role: string;
   createdAt: string;
 }
@@ -17,7 +17,7 @@ export interface CreateUserPayload {
   lastName: string;
   password: string;
   email: string;
-  unifiedNumber: string;
+  specialization?: string;
   role?: 'admin' | 'doctor';
 }
 
