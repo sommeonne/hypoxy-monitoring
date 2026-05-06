@@ -13,7 +13,9 @@ interface Props {
   phone: string;
   email: string;
   address: string;
-  diagnosis: string;
+  baselineHeartRate: number | null;
+  baselineRespiratoryRate: number | null;
+  tidalVolume: number | null;
 }
 
 interface FieldProps {
@@ -74,7 +76,9 @@ export default function PatientInfoCard({
   phone,
   email,
   address,
-  diagnosis,
+  baselineHeartRate,
+  baselineRespiratoryRate,
+  tidalVolume,
 }: Props) {
   const dob = dateOfBirth ? new Date(dateOfBirth).toLocaleDateString() : null;
 
@@ -128,11 +132,12 @@ export default function PatientInfoCard({
 
         {/* Row 4 */}
         <Field label="Email"   value={email} />
-        <Field label="Address" value={address} />
-        <div style={{ borderBottom: '1px solid #F3F4F6' }} />
+        <Field label="Address" value={address} span />
 
-        {/* Row 5 — full width, no bottom border */}
-        <Field label="Diagnosis" value={diagnosis} span noBorder />
+        {/* Row 5 — baseline vitals */}
+        <Field label="Baseline HR (bpm)"  value={baselineHeartRate != null ? String(baselineHeartRate) : null} />
+        <Field label="Baseline RR (/min)" value={baselineRespiratoryRate != null ? String(baselineRespiratoryRate) : null} />
+        <Field label="Tidal Volume (mL)"  value={tidalVolume != null ? String(tidalVolume) : null} noBorder />
 
       </div>
     </div>

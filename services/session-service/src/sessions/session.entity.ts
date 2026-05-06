@@ -67,8 +67,8 @@ export class Session {
   plannedDurationSeconds: number;
 
   @ApiProperty({ nullable: true })
-  @Column({ type: 'float', nullable: true })
-  lastNews2Score: number;
+  @Column({ type: 'text', nullable: true })
+  conclusion: string;
 
   @CreateDateColumn()
   createdAt: Date;

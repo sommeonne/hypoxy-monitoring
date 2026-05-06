@@ -64,21 +64,12 @@ export class AnalysisService {
       if ((level as AlertLevel) !== AlertLevel.CRITICAL) level = AlertLevel.WARNING;
     }
 
-    // --- NEWS2 score and escalation ---
-    const news2Score = this.computeNews2Score(measurement);
-    if (news2Score >= 7) {
-      level = AlertLevel.CRITICAL;
-    } else if (news2Score >= 5 && (level as AlertLevel) !== AlertLevel.CRITICAL) {
-      level = AlertLevel.WARNING;
-    }
-
     const result: AnalysisResult = {
       level,
       message:
         anomalies.length > 0
           ? anomalies.join('; ')
           : 'All parameters within normal range',
-      news2Score,
       anomalies,
       measurement,
     };
@@ -91,50 +82,10 @@ export class AnalysisService {
       measurementId: measurement.id,
       patientId: measurement.patientId,
       sessionId: measurement.sessionId,
-      news2Score,
       level,
     }));
 
     return result;
-  }
-
-  /**
-   * Computes the NEWS2 composite score (0–9) for the three tracked parameters:
-   * SpO2 (Scale 1), heart rate, and respiratory rate.
-   */
-  computeNews2Score(measurement: Measurement): number {
-    return (
-      this.scoreNews2Spo2(measurement.spo2) +
-      this.scoreNews2HeartRate(measurement.heartRate) +
-      this.scoreNews2RespRate(measurement.respiratoryRate)
-    );
-  }
-
-  /** NEWS2 SpO2 score — Scale 1 (no hypercapnic respiratory failure). */
-  private scoreNews2Spo2(v: number): number {
-    if (v <= 91) return 3;
-    if (v <= 93) return 2;
-    if (v <= 95) return 1;
-    return 0;
-  }
-
-  /** NEWS2 heart rate score. */
-  private scoreNews2HeartRate(v: number): number {
-    if (v <= 40)  return 3;
-    if (v <= 50)  return 1;
-    if (v <= 90)  return 0;
-    if (v <= 110) return 1;
-    if (v <= 130) return 2;
-    return 3;
-  }
-
-  /** NEWS2 respiratory rate score. */
-  private scoreNews2RespRate(v: number): number {
-    if (v <= 8)  return 3;
-    if (v <= 11) return 1;
-    if (v <= 20) return 0;
-    if (v <= 24) return 2;
-    return 3;
   }
 
   private async sendAlert(result: AnalysisResult): Promise<void> {
@@ -149,7 +100,6 @@ export class AnalysisService {
           spo2: result.measurement.spo2,
           heartRate: result.measurement.heartRate,
           respiratoryRate: result.measurement.respiratoryRate,
-          news2Score: result.news2Score,
         },
       });
     } catch (err) {

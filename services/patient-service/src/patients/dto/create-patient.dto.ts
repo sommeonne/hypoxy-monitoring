@@ -60,9 +60,22 @@ export class CreatePatientDto {
   @IsEmail()
   email: string;
 
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  diagnosis: string;
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  baselineHeartRate?: number;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  baselineRespiratoryRate?: number;
+
+  @ApiProperty({ required: false, description: 'Tidal volume (mL)' })
+  @IsOptional()
+  @IsNumber()
+  @Type(() => Number)
+  tidalVolume?: number;
 
 }

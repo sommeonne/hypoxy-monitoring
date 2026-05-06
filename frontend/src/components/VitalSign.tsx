@@ -5,7 +5,6 @@ interface Props {
   spo2: number;
   heartRate: number;
   respiratoryRate: number;
-  news2Score?: number;
   o2Percentage?: number;
 }
 
@@ -24,12 +23,6 @@ function getHeartRateColor(v: number): string {
 function getRespRateColor(v: number): string {
   if (v < 8 || v > 30) return '#E24B4A';
   if (v < 12 || v > 20) return '#EF9F27';
-  return '#1D9E75';
-}
-
-function getNews2Color(v: number): string {
-  if (v >= 7) return '#E24B4A';
-  if (v >= 5) return '#EF9F27';
   return '#1D9E75';
 }
 
@@ -87,29 +80,11 @@ function VitalCard({
   );
 }
 
-function getNews2Status(v: number): { label: string; bg: string; color: string } {
-  if (v >= 7) return { label: 'CRITICAL', bg: '#FEF2F2', color: '#E24B4A' };
-  if (v >= 5) return { label: 'WARNING', bg: '#FFFBEB', color: '#EF9F27' };
-  return { label: 'NORMAL', bg: '#E1F5EE', color: '#1D9E75' };
-}
-
-export default function VitalSign({ spo2, heartRate, respiratoryRate, news2Score, o2Percentage }: Props) {
-  const { label, bg, color } = news2Score !== undefined
-    ? getNews2Status(news2Score)
-    : getSpo2Status(spo2);
+export default function VitalSign({ spo2, heartRate, respiratoryRate, o2Percentage }: Props) {
+  const { label, bg, color } = getSpo2Status(spo2);
 
   return (
     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'flex-start' }}>
-      {news2Score !== undefined && (
-        <VitalCard
-          label="NEWS2 Score"
-          value={news2Score}
-          unit="/ 9"
-          large
-          color={getNews2Color(news2Score)}
-        />
-      )}
-
       <VitalCard label="SpO₂" value={spo2} unit="%" color={getSpo2Color(spo2)} />
 
       {o2Percentage != null && (
@@ -120,7 +95,6 @@ export default function VitalSign({ spo2, heartRate, respiratoryRate, news2Score
         label="Heart Rate"
         value={heartRate}
         unit="bpm"
-
         color={getHeartRateColor(heartRate)}
       />
 
@@ -128,7 +102,6 @@ export default function VitalSign({ spo2, heartRate, respiratoryRate, news2Score
         label="Resp. Rate"
         value={respiratoryRate}
         unit="/min"
-
         color={getRespRateColor(respiratoryRate)}
       />
 

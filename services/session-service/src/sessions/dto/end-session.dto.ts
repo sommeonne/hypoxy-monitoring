@@ -38,8 +38,7 @@ export class EndSessionDto {
   @IsNumber()
   totalMeasurements?: number;
 
-  @ApiProperty({ required: false, description: 'Last NEWS2 score (0–9)' })
+  @ApiProperty({ required: false, description: 'Hypoxia tolerance conclusion' })
   @IsOptional()
-  @IsNumber()
-  news2Score?: number;
+  conclusion?: string;
 }

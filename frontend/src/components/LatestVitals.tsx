@@ -8,11 +8,9 @@ export interface VitalTrends {
   o2?: number[];
   heartRate?: number[];
   respRate?: number[];
-  news2Score?: number[];
 }
 
 export interface VitalsData {
-  news2Score?: number;
   spo2: number;
   o2?: number;
   heartRate: number;
@@ -50,12 +48,6 @@ function rrStatus(v: number): Status {
   if (v < 12 || v > 20) return 'watch';
   return 'normal';
 }
-function news2Status(v: number): Status {
-  if (v >= 7) return 'critical';
-  if (v >= 5) return 'watch';
-  return 'normal';
-}
-
 // ─── StatusChip ───────────────────────────────────────────────────────────────
 
 const CHIP_BG: Record<Status, string>     = { normal: '#E1F5EE', watch: '#FFFBEB', critical: '#FEF2F2', info: '#EFF6FF' };
@@ -88,54 +80,6 @@ function StatusChip({ status }: { status: Status }) {
       </svg>
       {t.label}
     </span>
-  );
-}
-
-// ─── Hero tile ────────────────────────────────────────────────────────────────
-
-function HeroTile({ value, status }: { value: number; status: Status }) {
-  const t = STATUS_TOKEN[status];
-  return (
-    <div
-      style={{
-        padding: '18px 20px',
-        borderRadius: 12,
-        border: `1.5px solid ${BORDER}`,
-        background: BG,
-        display: 'flex',
-        flexDirection: 'column',
-        justifyContent: 'space-between',
-        height: '100%',
-        boxSizing: 'border-box',
-      }}
-    >
-      <span style={{ fontSize: 11, fontWeight: 600, color: '#94A3B8', letterSpacing: '0.07em', textTransform: 'uppercase' }}>
-        NEWS2 Score
-      </span>
-
-      <div style={{ textAlign: 'center', padding: '10px 0 6px' }}>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'center', gap: 2 }}>
-          <span
-            aria-label={`NEWS2 score ${value} out of 9, ${STATUS_TOKEN[status].label}`}
-            style={{
-              fontSize: 54,
-              fontWeight: 800,
-              lineHeight: 1,
-              color: t.text,
-              fontVariantNumeric: 'tabular-nums',
-              letterSpacing: '-0.03em',
-            }}
-          >
-            {value}
-          </span>
-          <span style={{ fontSize: 15, color: '#94A3B8', fontWeight: 500, paddingBottom: 8 }}>/9</span>
-        </div>
-      </div>
-
-      <div>
-        <StatusChip status={status} />
-      </div>
-    </div>
   );
 }
 
@@ -204,30 +148,19 @@ function MetricTile({
 // ─── Main component ───────────────────────────────────────────────────────────
 
 export default function LatestVitals({ vitals }: { vitals: VitalsData }) {
-  const hiStatus  = vitals.news2Score != null ? news2Status(vitals.news2Score) : 'normal';
   const s2Status  = spo2Status(vitals.spo2);
   const hrStatus_ = hrStatus(vitals.heartRate);
   const rrStatus_ = rrStatus(vitals.respRate);
 
   return (
-    <div style={{ display: 'flex', gap: 10, alignItems: 'stretch' }}>
-      {/* Hero */}
-      {vitals.news2Score != null && (
-        <div style={{ flex: '0 0 170px' }}>
-          <HeroTile value={vitals.news2Score} status={hiStatus} />
-        </div>
-      )}
-
-      {/* 2×2 grid: SpO₂ | O₂ / HR | RR */}
-      <div
-        style={{
-          flex: 1,
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gridTemplateRows: '1fr 1fr',
-          gap: 10,
-        }}
-      >
+    <div
+      style={{
+        display: 'grid',
+        gridTemplateColumns: '1fr 1fr',
+        gridTemplateRows: '1fr 1fr',
+        gap: 10,
+      }}
+    >
         <MetricTile
           label="SpO₂"
           value={vitals.spo2}
@@ -266,7 +199,6 @@ export default function LatestVitals({ vitals }: { vitals: VitalsData }) {
           ariaLabel={`Respiratory rate ${vitals.respRate} breaths per minute, ${STATUS_TOKEN[rrStatus_].label}`}
 
         />
-      </div>
     </div>
   );
 }

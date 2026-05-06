@@ -41,7 +41,9 @@ export class PdfGeneratorService {
       y = this.kvRows(doc, [
         ['Full Name', `${patient.firstName} ${patient.lastName}`],
         ['Date of Birth', new Date(patient.dateOfBirth).toLocaleDateString()],
-        ['Diagnosis', patient.diagnosis || '—'],
+        ['Baseline HR (bpm)', patient.baselineHeartRate != null ? String(patient.baselineHeartRate) : '—'],
+        ['Baseline RR (/min)', patient.baselineRespiratoryRate != null ? String(patient.baselineRespiratoryRate) : '—'],
+        ['Tidal Volume (mL)', patient.tidalVolume != null ? String(patient.tidalVolume) : '—'],
       ], y);
       y += 10;
 
@@ -73,7 +75,7 @@ export class PdfGeneratorService {
           ['Total Alerts', String(alerts.length)],
           ['Critical', String(critical)],
           ['Warning', String(warning)],
-          ['NEWS2 Score (last)', session.lastNews2Score != null ? `${session.lastNews2Score} / 9` : '—'],
+          ['Conclusion', session.conclusion ?? '—'],
         ], y);
       }
 

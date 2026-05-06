@@ -53,8 +53,6 @@ export interface Measurement {
 export interface AnalysisResult {
   level: AlertLevel;
   message: string;
-  /** NEWS2 composite score (0–9) derived from SpO2, heart rate, and respiratory rate. */
-  news2Score: number;
   anomalies: string[];
   measurement: Measurement;
 }

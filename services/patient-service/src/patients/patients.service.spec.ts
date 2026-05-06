@@ -32,7 +32,7 @@ describe('PatientsService', () => {
     const patient = { ...dto, id: 'uuid', createdAt: new Date(), updatedAt: new Date() };
     mockRepo.create.mockReturnValue(patient);
     mockRepo.save.mockResolvedValue(patient);
-    const result = await service.create(dto as any);
+    const result = await service.create(dto as any, 'doctor-1');
     expect(result).toEqual(patient);
   });
 

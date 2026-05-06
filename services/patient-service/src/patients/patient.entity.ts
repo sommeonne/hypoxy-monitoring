@@ -67,8 +67,16 @@ export class Patient {
   email: string;
 
   @ApiProperty({ nullable: true })
-  @Column({ nullable: true, transformer: encryptTransformer })
-  diagnosis: string;
+  @Column({ nullable: true, type: 'float' })
+  baselineHeartRate: number;
+
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true, type: 'float' })
+  baselineRespiratoryRate: number;
+
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true, type: 'float' })
+  tidalVolume: number;
 
   @ApiProperty({ nullable: true })
   @Column({ nullable: true })

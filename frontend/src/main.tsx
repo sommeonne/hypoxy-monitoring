@@ -51,7 +51,6 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
               darkItemHoverColor: '#6EE7B7',
               horizontalItemSelectedColor: '#6EE7B7',
               activeBarBorderWidth: 2,
-              activeBarColor: '#6EE7B7',
               itemHeight: 60,
             },
             Card: {

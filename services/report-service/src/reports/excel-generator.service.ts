@@ -25,7 +25,9 @@ export class ExcelGeneratorService {
     summarySheet.addRows([
       { field: 'Patient', value: `${patient.firstName} ${patient.lastName}` },
       { field: 'Date of Birth', value: new Date(patient.dateOfBirth).toLocaleDateString() },
-      { field: 'Diagnosis', value: patient.diagnosis || 'N/A' },
+      { field: 'Baseline HR (bpm)', value: patient.baselineHeartRate ?? 'N/A' },
+      { field: 'Baseline RR (/min)', value: patient.baselineRespiratoryRate ?? 'N/A' },
+      { field: 'Tidal Volume (mL)', value: patient.tidalVolume ?? 'N/A' },
       { field: 'Session ID', value: session.id },
       { field: 'Started At', value: new Date(session.startedAt).toLocaleString() },
       {
@@ -40,7 +42,7 @@ export class ExcelGeneratorService {
       { field: 'Min SpO2 (%)', value: session.summary?.minSpo2?.toFixed(1) ?? 'N/A' },
       { field: 'Total Measurements', value: session.summary?.totalMeasurements ?? measurements.length },
       { field: 'Alert Count', value: session.summary?.alertCount ?? alerts.length },
-      { field: 'NEWS2 Score (last)', value: session.lastNews2Score ?? 'N/A' },
+      { field: 'Conclusion', value: session.conclusion ?? 'N/A' },
     ]);
 
     // Measurements sheet

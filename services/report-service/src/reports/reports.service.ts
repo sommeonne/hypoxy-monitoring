@@ -58,7 +58,7 @@ export class ReportsService {
       new Date(session.startedAt),
       pdfBuffer,
       sessionId,
-      session.lastNews2Score,
+      session.conclusion,
     );
   }
 

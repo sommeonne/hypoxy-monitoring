@@ -31,7 +31,7 @@ describe('SessionsService', () => {
     const session = { ...dto, id: 'uuid', status: SessionStatus.ACTIVE, startedAt: new Date() };
     mockRepo.create.mockReturnValue(session);
     mockRepo.save.mockResolvedValue(session);
-    const result = await service.create(dto);
+    const result = await service.create(dto, 'doctor-1');
     expect(result.status).toBe(SessionStatus.ACTIVE);
   });
 

@@ -104,13 +104,6 @@ export default function PatientsPage() {
       ),
     },
     {
-      title: <span className="label-caps">Diagnosis</span>,
-      dataIndex: 'diagnosis',
-      render: (d: string) => (
-        <Text style={{ color: d ? '#374151' : '#CBD5E1', fontSize: 13 }}>{d || '—'}</Text>
-      ),
-    },
-    {
       title: <span className="label-caps">Registered</span>,
       dataIndex: 'createdAt',
       render: (d: string) => (
@@ -317,6 +310,26 @@ export default function PatientsPage() {
               </Select>
             </Form.Item>
           </div>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0 16px' }}>
+            <Form.Item
+              name="baselineHeartRate"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Baseline HR (bpm)</span>}
+            >
+              <InputNumber style={{ width: '100%' }} min={20} max={200} />
+            </Form.Item>
+            <Form.Item
+              name="baselineRespiratoryRate"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Baseline RR (/min)</span>}
+            >
+              <InputNumber style={{ width: '100%' }} min={4} max={60} />
+            </Form.Item>
+            <Form.Item
+              name="tidalVolume"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Tidal Volume (mL)</span>}
+            >
+              <InputNumber style={{ width: '100%' }} min={0} max={2000} />
+            </Form.Item>
+          </div>
           <Form.Item
             name="address"
             label={<span style={{ fontWeight: 500, fontSize: 13 }}>Address</span>}
@@ -340,13 +353,6 @@ export default function PatientsPage() {
               <Input placeholder="example@email.com" />
             </Form.Item>
           </div>
-          <Form.Item
-            name="diagnosis"
-            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Diagnosis</span>}
-            rules={[{ required: true }]}
-          >
-            <Input />
-          </Form.Item>
         </Form>
       </Modal>
     </div>

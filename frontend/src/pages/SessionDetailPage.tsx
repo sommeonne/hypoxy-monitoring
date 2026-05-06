@@ -6,6 +6,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSession, endSession, updateSessionNotes } from '../api/sessions';
 import { fetchSessionMeasurements, Measurement } from '../api/measurements';
 import { fetchAlerts, Alert } from '../api/alerts';
+import { fetchPatient } from '../api/patients';
 import { useSocket } from '../hooks/useSocket';
 import MeasurementChart from '../components/MeasurementChart';
 import LatestVitals from '../components/LatestVitals';
@@ -13,6 +14,52 @@ import LatestVitals from '../components/LatestVitals';
 const { Text } = Typography;
 
 type AlertFilter = 'ALL' | 'CRITICAL' | 'WARNING';
+
+function computeConclusion(
+  displayData: Measurement[],
+  o2Pct: number | undefined,
+  patientBaselineHR?: number | null,
+  patientBaselineRR?: number | null,
+): string | undefined {
+  if (displayData.length < 1) return undefined;
+
+  const latest = displayData[0];
+  const first = displayData[displayData.length - 1];
+
+  const finalSpo2 = latest.spo2;
+  const refHR = patientBaselineHR ?? first.heartRate;
+  const refRR = patientBaselineRR ?? first.respiratoryRate;
+  const hrChangePct = refHR > 0
+    ? Math.abs((latest.heartRate - refHR) / refHR) * 100
+    : 0;
+  const rrChangePct = refRR > 0
+    ? Math.abs((latest.respiratoryRate - refRR) / refRR) * 100
+    : 0;
+
+  let resistance: string;
+  if (finalSpo2 > 85) {
+    resistance = 'Hypoxia tolerance high';
+  } else if (finalSpo2 >= 80) {
+    resistance = 'Hypoxia tolerance normal';
+  } else if (finalSpo2 >= 75) {
+    const o2 = o2Pct ?? 10;
+    if (o2 <= 10) resistance = 'Hypoxia tolerance moderately reduced';
+    else if (o2 <= 12) resistance = 'Hypoxia tolerance reduced';
+    else resistance = 'Hypoxia tolerance sharply reduced';
+  } else {
+    resistance = 'Hypoxia tolerance sharply reduced';
+  }
+
+  const hrElevated = hrChangePct > 30;
+  const rrElevated = rrChangePct > 30;
+  let reaction: string;
+  if (hrElevated && rrElevated) reaction = 'hemodynamic and respiratory reaction elevated';
+  else if (hrElevated) reaction = 'hemodynamic reaction elevated';
+  else if (rrElevated) reaction = 'respiratory reaction elevated';
+  else reaction = 'reaction normal';
+
+  return `${resistance}, ${reaction}`;
+}
 
 
 function formatCountdown(seconds: number): string {
@@ -51,7 +98,6 @@ export default function SessionDetailPage() {
   const queryClient = useQueryClient();
   const { on } = useSocket();
   const [liveData, setLiveData] = useState<Measurement[]>([]);
-  const [news2Score, setNews2Score] = useState<number | undefined>();
   const [alertFilter, setAlertFilter] = useState<AlertFilter>('ALL');
   const [sortDesc, setSortDesc] = useState(true);
   const [noteText, setNoteText] = useState('');
@@ -65,6 +111,12 @@ export default function SessionDetailPage() {
     queryKey: ['session', id],
     queryFn: () => fetchSession(id!),
     enabled: !!id,
+  });
+
+  const { data: patient } = useQuery({
+    queryKey: ['patient', session?.patientId],
+    queryFn: () => fetchPatient(session!.patientId),
+    enabled: !!session?.patientId,
   });
 
   const { data: measurements = [] } = useQuery({
@@ -129,7 +181,7 @@ export default function SessionDetailPage() {
             avgRespiratoryRate: Math.round((data.reduce((s, m) => s + m.respiratoryRate, 0) / data.length) * 10) / 10,
             minSpo2: Math.min(...data.map((m) => m.spo2)),
             maxHeartRate: Math.max(...data.map((m) => m.heartRate)),
-            ...(news2Score != null && { news2Score }),
+            conclusion: computeConclusion(data, session?.o2Percentage, patient?.baselineHeartRate, patient?.baselineRespiratoryRate),
           }
         : { totalMeasurements: 0, alertCount: alerts.length };
       return endSession(id!, summary);
@@ -150,12 +202,6 @@ export default function SessionDetailPage() {
       }
     });
   }, [on, id, queryClient]);
-
-  useEffect(() => {
-    return on('analysis:result', (r: { sessionId: string; news2Score: number }) => {
-      if (r.sessionId === id) setNews2Score(r.news2Score);
-    });
-  }, [on, id]);
 
   useEffect(() => {
     if (!session || session.status !== 'active' || !session.plannedDurationSeconds) {
@@ -448,9 +494,9 @@ export default function SessionDetailPage() {
                   </Descriptions.Item>
                   <Descriptions.Item label="Measurements">{session.summary.totalMeasurements}</Descriptions.Item>
                   <Descriptions.Item label="Alerts">{alerts.length}</Descriptions.Item>
-                  {session.lastNews2Score != null && (
-                    <Descriptions.Item label="NEWS2 Score">
-                      {session.lastNews2Score} / 9
+                  {session.conclusion && (
+                    <Descriptions.Item label="Conclusion">
+                      <span style={{ fontWeight: 600, color: '#0F172A' }}>{session.conclusion}</span>
                     </Descriptions.Item>
                   )}
                 </>
@@ -468,12 +514,11 @@ export default function SessionDetailPage() {
             >
               <LatestVitals
                 vitals={{
-                  spo2:         latest.spo2,
-                  heartRate:    latest.heartRate,
-                  respRate:     latest.respiratoryRate,
-                  o2:           latest.o2Percentage,
-                  news2Score: news2Score ?? session.lastNews2Score,
-                  updatedAt:    latest.createdAt,
+                  spo2:      latest.spo2,
+                  heartRate: latest.heartRate,
+                  respRate:  latest.respiratoryRate,
+                  o2:        latest.o2Percentage,
+                  updatedAt: latest.createdAt,
                   trends: (() => {
                     const win = [...displayData].slice(0, 20).reverse();
                     return {

@@ -51,7 +51,7 @@ export class SessionsService {
       endedAt,
       status: SessionStatus.COMPLETED,
       summary,
-      ...(dto.news2Score != null && { lastNews2Score: dto.news2Score }),
+      ...(dto.conclusion != null && { conclusion: dto.conclusion }),
     });
 
     const updated = await this.repo.save(session);

@@ -25,7 +25,7 @@ export class EmailService {
     sessionDate: Date,
     pdfBuffer: Buffer,
     sessionId: string,
-    news2Score?: number,
+    conclusion?: string,
   ): Promise<void> {
     const from =
       this.config.get<string>("SMTP_FROM") ||
@@ -59,13 +59,11 @@ export class EmailService {
             The report includes session details, vital sign measurements,
             and any alerts triggered during the session.
           </p>
-          ${news2Score != null ? `
+          ${conclusion ? `
           <table style="border-collapse: collapse; margin: 16px 0; font-size: 14px;">
             <tr>
-              <td style="padding: 6px 16px 6px 0; color: #64748B;">NEWS2 Score (last)</td>
-              <td style="padding: 6px 0; font-weight: 600; color: ${news2Score >= 7 ? '#E24B4A' : news2Score >= 5 ? '#EF9F27' : '#1D9E75'};">
-                ${news2Score} / 9
-              </td>
+              <td style="padding: 6px 16px 6px 0; color: #64748B;">Conclusion</td>
+              <td style="padding: 6px 0; font-weight: 600; color: #0F172A;">${conclusion}</td>
             </tr>
           </table>` : ''}
           <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;" />

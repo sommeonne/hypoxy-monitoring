@@ -34,7 +34,7 @@ export class RedisSubscriberService implements OnModuleInit, OnModuleDestroy {
         const measurement: Measurement = JSON.parse(message);
         const result = await this.analysisService.analyze(measurement);
         this.logger.log(
-          `Analyzed patient ${measurement.patientId}: ${result.level} (NEWS2 score: ${result.news2Score})`,
+          `Analyzed patient ${measurement.patientId}: ${result.level}`,
         );
       } catch (err) {
         this.logger.error('Error processing measurement', err);
