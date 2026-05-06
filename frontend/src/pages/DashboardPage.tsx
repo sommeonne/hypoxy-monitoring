@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Row, Col, Card, Table, Tag, Typography, Empty, Spin } from 'antd';
 import {
   MonitorOutlined,
@@ -81,17 +81,21 @@ export default function DashboardPage() {
   const { data: patients = [] } = useQuery({
     queryKey: ['patients'],
     queryFn: fetchPatients,
+    staleTime: 60_000,
   });
 
-  const patientNames = Object.fromEntries(
-    patients.map((p) => [p.id, `${p.firstName} ${p.lastName}`]),
+  const patientNames = useMemo(
+    () => Object.fromEntries(patients.map((p) => [p.id, `${p.firstName} ${p.lastName}`])),
+    [patients],
   );
+  const myPatientIds = useMemo(() => new Set(patients.map((p) => p.id)), [patients]);
 
-  const { data: alerts = [] } = useQuery({
+  const { data: rawAlerts = [] } = useQuery({
     queryKey: ['alerts'],
     queryFn: () => fetchAlerts(),
     refetchInterval: 15_000,
   });
+  const alerts = rawAlerts.filter((a) => myPatientIds.has(a.patientId));
 
   useEffect(() => {
     const offM = on('measurement:new', () =>

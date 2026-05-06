@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Layout, Menu, Avatar, Dropdown } from 'antd';
 import {
   MonitorOutlined,
@@ -8,8 +8,10 @@ import {
   LogoutOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { isAdmin, getUsername, logout } from '../utils/auth';
 import AlertPanel from './AlertPanel';
+import { fetchPatients } from '../api/patients';
 
 const { Header } = Layout;
 
@@ -39,21 +41,32 @@ function HeartPulseIcon() {
 export default function AppHeader() {
   const navigate = useNavigate();
   const location = useLocation();
+  const queryClient = useQueryClient();
 
-  const menuItems = [
-    { key: '/dashboard', icon: <MonitorOutlined />, label: 'Dashboard' },
-    { key: '/patients', icon: <TeamOutlined />, label: 'Patients' },
-    ...(isAdmin() ? [
-      { key: '/users', icon: <MedicineBoxOutlined />, label: 'Doctors' },
-      { key: '/admin-settings', icon: <SettingOutlined />, label: 'Admin Settings' },
-    ] : []),
-  ];
+  const { data: patients = [] } = useQuery({
+    queryKey: ['patients'],
+    queryFn: fetchPatients,
+    enabled: !isAdmin(),
+    staleTime: 60_000,
+  });
+  const myPatientIds = useMemo(() => new Set(patients.map((p) => p.id)), [patients]);
+
+  const menuItems = isAdmin()
+    ? [
+        { key: '/users', icon: <MedicineBoxOutlined />, label: 'Doctors' },
+        { key: '/admin-settings', icon: <SettingOutlined />, label: 'Admin Settings' },
+      ]
+    : [
+        { key: '/dashboard', icon: <MonitorOutlined />, label: 'Dashboard' },
+        { key: '/patients', icon: <TeamOutlined />, label: 'Patients' },
+      ];
 
   const userMenu = {
     items: [{ key: 'logout', icon: <LogoutOutlined />, label: 'Sign Out', danger: true }],
     onClick: ({ key }: { key: string }) => {
       if (key === 'logout') {
         logout();
+        queryClient.clear();
         navigate('/login', { replace: true });
       }
     },
@@ -64,7 +77,7 @@ export default function AppHeader() {
 
   return (
     <>
-      <AlertPanel />
+      {!isAdmin() && <AlertPanel patientIds={myPatientIds} />}
       <Header
         style={{
           display: 'flex',
@@ -88,7 +101,7 @@ export default function AppHeader() {
             minWidth: 180,
             flexShrink: 0,
           }}
-          onClick={() => navigate('/dashboard')}
+          onClick={() => navigate(isAdmin() ? '/users' : '/dashboard')}
         >
           <HeartPulseIcon />
           <span

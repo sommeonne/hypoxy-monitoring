@@ -65,8 +65,4 @@ export class CreatePatientDto {
   @IsNotEmpty()
   diagnosis: string;
 
-  @ApiProperty({ nullable: true })
-  @IsOptional()
-  @IsString()
-  notes: string;
 }

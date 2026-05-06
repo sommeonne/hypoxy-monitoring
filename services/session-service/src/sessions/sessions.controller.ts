@@ -1,5 +1,6 @@
 import {
-  Controller, Get, Post, Put, Patch, Body, Param, ParseUUIDPipe,
+  Controller, Get, Post, Put, Patch, Body, Param, ParseUUIDPipe, Headers,
+  ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SessionsService } from './sessions.service';
@@ -13,11 +14,20 @@ import { Session } from './session.entity';
 export class SessionsController {
   constructor(private readonly sessionsService: SessionsService) {}
 
+  private requireDoctor(role: string): void {
+    if (role === 'admin') throw new ForbiddenException('Access to sessions is restricted to doctors');
+  }
+
   @Post()
   @ApiOperation({ summary: 'Start a new therapy session' })
   @ApiResponse({ status: 201, type: Session })
-  create(@Body() dto: CreateSessionDto): Promise<Session> {
-    return this.sessionsService.create(dto);
+  create(
+    @Body() dto: CreateSessionDto,
+    @Headers('x-user-id') doctorId: string,
+    @Headers('x-user-role') role: string,
+  ): Promise<Session> {
+    this.requireDoctor(role);
+    return this.sessionsService.create(dto, doctorId);
   }
 
   @Put(':id/end')
@@ -26,29 +36,46 @@ export class SessionsController {
   end(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: EndSessionDto,
+    @Headers('x-user-id') doctorId: string,
+    @Headers('x-user-role') role: string,
   ): Promise<Session> {
-    return this.sessionsService.end(id, dto);
+    this.requireDoctor(role);
+    return this.sessionsService.end(id, dto, doctorId);
   }
 
   @Get('active')
   @ApiOperation({ summary: 'Get all active sessions' })
   @ApiResponse({ status: 200, type: [Session] })
-  findActive(): Promise<Session[]> {
-    return this.sessionsService.findActive();
+  findActive(
+    @Headers('x-user-id') doctorId: string,
+    @Headers('x-user-role') role: string,
+  ): Promise<Session[]> {
+    this.requireDoctor(role);
+    return this.sessionsService.findActive(doctorId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get session details' })
   @ApiResponse({ status: 200, type: Session })
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Session> {
-    return this.sessionsService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Headers('x-user-id') doctorId: string,
+    @Headers('x-user-role') role: string,
+  ): Promise<Session> {
+    this.requireDoctor(role);
+    return this.sessionsService.findOne(id, doctorId);
   }
 
   @Get('patient/:patientId')
   @ApiOperation({ summary: 'Get sessions for a patient' })
   @ApiResponse({ status: 200, type: [Session] })
-  findByPatient(@Param('patientId', ParseUUIDPipe) patientId: string): Promise<Session[]> {
-    return this.sessionsService.findByPatient(patientId);
+  findByPatient(
+    @Param('patientId', ParseUUIDPipe) patientId: string,
+    @Headers('x-user-id') doctorId: string,
+    @Headers('x-user-role') role: string,
+  ): Promise<Session[]> {
+    this.requireDoctor(role);
+    return this.sessionsService.findByPatient(patientId, doctorId);
   }
 
   @Patch(':id/notes')
@@ -57,7 +84,10 @@ export class SessionsController {
   updateNotes(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateNotesDto,
+    @Headers('x-user-id') doctorId: string,
+    @Headers('x-user-role') role: string,
   ): Promise<Session> {
-    return this.sessionsService.updateNotes(id, dto.notes);
+    this.requireDoctor(role);
+    return this.sessionsService.updateNotes(id, dto.notes, doctorId);
   }
 }

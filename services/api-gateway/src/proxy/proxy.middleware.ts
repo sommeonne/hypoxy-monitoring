@@ -44,8 +44,9 @@ export class ProxyMiddleware implements NestMiddleware {
       res.status(401).json({ message: 'Unauthorized' });
       return;
     }
+    let jwtPayload: { sub: string; role: string } | null = null;
     try {
-      this.jwtService.verify(rawToken);
+      jwtPayload = this.jwtService.verify(rawToken);
     } catch {
       res.status(401).json({ message: 'Unauthorized' });
       return;
@@ -66,6 +67,10 @@ export class ProxyMiddleware implements NestMiddleware {
       pathRewrite: { [`^/api`]: '' },
       on: {
         proxyReq: (proxyReq: ClientRequest, req: Request) => {
+          if (jwtPayload) {
+            proxyReq.setHeader('x-user-id', jwtPayload.sub);
+            proxyReq.setHeader('x-user-role', jwtPayload.role);
+          }
           const body = (req as any).body;
           if (body !== undefined && body !== null) {
             const bodyData = JSON.stringify(body);

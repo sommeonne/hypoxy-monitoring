@@ -7,11 +7,6 @@ export class CreateSessionDto {
   @IsNotEmpty()
   patientId: string;
 
-  @ApiProperty({ required: false, description: 'Doctor UUID' })
-  @IsOptional()
-  @IsUUID()
-  doctorId?: string;
-
   @ApiProperty({ required: false, description: 'O2 concentration percentage (10–20)', minimum: 10, maximum: 20 })
   @IsOptional()
   @IsNumber()

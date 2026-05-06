@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Patient } from './patient.entity';
@@ -12,29 +12,33 @@ export class PatientsService {
     private readonly repo: Repository<Patient>,
   ) {}
 
-  create(dto: CreatePatientDto): Promise<Patient> {
-    const patient = this.repo.create(dto);
+  create(dto: CreatePatientDto, doctorId: string): Promise<Patient> {
+    const patient = this.repo.create({ ...dto, doctorId });
     return this.repo.save(patient);
   }
 
-  findAll(): Promise<Patient[]> {
-    return this.repo.find({ order: { createdAt: 'DESC' } });
+  findAll(role: string, doctorId: string): Promise<Patient[]> {
+    const where = role === 'admin' ? {} : { doctorId };
+    return this.repo.find({ where, order: { createdAt: 'DESC' } });
   }
 
-  async findOne(id: string): Promise<Patient> {
+  async findOne(id: string, role?: string, doctorId?: string): Promise<Patient> {
     const patient = await this.repo.findOne({ where: { id } });
     if (!patient) throw new NotFoundException(`Patient ${id} not found`);
+    if (role === 'doctor' && patient.doctorId !== doctorId) {
+      throw new ForbiddenException('Access denied');
+    }
     return patient;
   }
 
-  async update(id: string, dto: UpdatePatientDto): Promise<Patient> {
-    const patient = await this.findOne(id);
+  async update(id: string, dto: UpdatePatientDto, role: string, doctorId: string): Promise<Patient> {
+    const patient = await this.findOne(id, role, doctorId);
     Object.assign(patient, dto);
     return this.repo.save(patient);
   }
 
-  async remove(id: string): Promise<void> {
-    const patient = await this.findOne(id);
+  async remove(id: string, role: string, doctorId: string): Promise<void> {
+    const patient = await this.findOne(id, role, doctorId);
     await this.repo.softRemove(patient);
   }
 }

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Session, SessionStatus, SessionSummary } from './session.entity';
@@ -14,9 +14,10 @@ export class SessionsService {
     private readonly redisPublisher: RedisPublisherService,
   ) {}
 
-  async create(dto: CreateSessionDto): Promise<Session> {
+  async create(dto: CreateSessionDto, doctorId: string): Promise<Session> {
     const session = this.repo.create({
       ...dto,
+      doctorId,
       startedAt: new Date(),
       status: SessionStatus.ACTIVE,
     });
@@ -25,8 +26,8 @@ export class SessionsService {
     return saved;
   }
 
-  async end(id: string, dto: EndSessionDto): Promise<Session> {
-    const session = await this.findOne(id);
+  async end(id: string, dto: EndSessionDto, doctorId?: string): Promise<Session> {
+    const session = await this.findOne(id, doctorId);
     if (session.status !== SessionStatus.ACTIVE) {
       throw new BadRequestException('Session is not active');
     }
@@ -58,28 +59,29 @@ export class SessionsService {
     return updated;
   }
 
-  async findOne(id: string): Promise<Session> {
+  async findOne(id: string, doctorId?: string): Promise<Session> {
     const session = await this.repo.findOne({ where: { id } });
     if (!session) throw new NotFoundException(`Session ${id} not found`);
+    if (doctorId && session.doctorId !== doctorId) throw new ForbiddenException('Access denied');
     return session;
   }
 
-  findByPatient(patientId: string): Promise<Session[]> {
+  findByPatient(patientId: string, doctorId: string): Promise<Session[]> {
     return this.repo.find({
-      where: { patientId },
+      where: { patientId, doctorId },
       order: { startedAt: 'DESC' },
     });
   }
 
-  findActive(): Promise<Session[]> {
+  findActive(doctorId: string): Promise<Session[]> {
     return this.repo.find({
-      where: { status: SessionStatus.ACTIVE },
+      where: { status: SessionStatus.ACTIVE, doctorId },
       order: { startedAt: 'DESC' },
     });
   }
 
-  async updateNotes(id: string, notes: string | undefined): Promise<Session> {
-    const session = await this.findOne(id);
+  async updateNotes(id: string, notes: string | undefined, doctorId?: string): Promise<Session> {
+    const session = await this.findOne(id, doctorId);
     session.notes = notes ?? null!;
     return this.repo.save(session);
   }

@@ -72,7 +72,7 @@ export class Patient {
 
   @ApiProperty({ nullable: true })
   @Column({ nullable: true })
-  notes: string;
+  doctorId: string;
 
   @ApiProperty()
   @CreateDateColumn()

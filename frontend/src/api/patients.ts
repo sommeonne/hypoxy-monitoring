@@ -16,7 +16,6 @@ export interface Patient {
   phone: string;
   email: string;
   diagnosis: string;
-  notes: string;
   createdAt: string;
 }
 

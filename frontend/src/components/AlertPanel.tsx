@@ -3,6 +3,7 @@ import { useSocket } from '../hooks/useSocket';
 
 interface AlertData {
   id: string;
+  patientId: string;
   level: 'CRITICAL' | 'WARNING';
   message: string;
   values: Record<string, number>;
@@ -54,13 +55,18 @@ function buildTitle(
   return `${label} ${level === 'CRITICAL' ? 'critical' : 'warning'} — ${val}`;
 }
 
-export default function AlertPanel() {
+export default function AlertPanel({ patientIds }: { patientIds: Set<string> }) {
   const { on } = useSocket();
   const [groups, setGroups] = useState<AlertGroup[]>([]);
   const [, setTick] = useState(0);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const lastSoundRef = useRef<Map<string, number>>(new Map());
   const groupsRef = useRef<AlertGroup[]>([]);
+  const patientIdsRef = useRef<Set<string>>(patientIds);
+
+  useEffect(() => {
+    patientIdsRef.current = patientIds;
+  }, [patientIds]);
 
   useEffect(() => {
     groupsRef.current = groups;
@@ -129,6 +135,8 @@ export default function AlertPanel() {
 
   useEffect(() => {
     return on('alert:new', (alert: AlertData) => {
+      const ids = patientIdsRef.current;
+      if (!ids.has(alert.patientId)) return;
       const now = Date.now();
       const key = getGroupKey(alert.level, alert.values);
       const title = buildTitle(alert.level, alert.values);

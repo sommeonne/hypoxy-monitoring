@@ -23,6 +23,12 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function DoctorRoute({ children }: { children: React.ReactNode }) {
+  if (!isLoggedIn()) return <Navigate to="/login" replace />;
+  if (isAdmin()) return <Navigate to="/users" replace />;
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
     <Routes>
@@ -36,11 +42,11 @@ export default function App() {
               <Content>
                 <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 40px', width: '100%' }}>
                   <Routes>
-                    <Route path="/" element={<Navigate to="/dashboard" replace />} />
-                    <Route path="/dashboard" element={<DashboardPage />} />
-                    <Route path="/patients" element={<PatientsPage />} />
-                    <Route path="/patients/:id" element={<PatientDetailPage />} />
-                    <Route path="/sessions/:id" element={<SessionDetailPage />} />
+                    <Route path="/" element={<Navigate to={isAdmin() ? '/users' : '/dashboard'} replace />} />
+                    <Route path="/dashboard" element={<DoctorRoute><DashboardPage /></DoctorRoute>} />
+                    <Route path="/patients" element={<DoctorRoute><PatientsPage /></DoctorRoute>} />
+                    <Route path="/patients/:id" element={<DoctorRoute><PatientDetailPage /></DoctorRoute>} />
+                    <Route path="/sessions/:id" element={<DoctorRoute><SessionDetailPage /></DoctorRoute>} />
                     <Route path="/users" element={<AdminRoute><DoctorsPage /></AdminRoute>} />
                     <Route path="/admin-settings" element={<AdminRoute><AdminSettingsPage /></AdminRoute>} />
                   </Routes>

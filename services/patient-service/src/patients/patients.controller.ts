@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Put, Delete,
-  Body, Param, ParseUUIDPipe, HttpCode, HttpStatus,
+  Body, Param, ParseUUIDPipe, HttpCode, HttpStatus, Headers,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PatientsService } from './patients.service';
@@ -16,22 +16,32 @@ export class PatientsController {
   @Post()
   @ApiOperation({ summary: 'Register a new patient' })
   @ApiResponse({ status: 201, type: Patient })
-  create(@Body() dto: CreatePatientDto): Promise<Patient> {
-    return this.patientsService.create(dto);
+  create(
+    @Body() dto: CreatePatientDto,
+    @Headers('x-user-id') doctorId: string,
+  ): Promise<Patient> {
+    return this.patientsService.create(dto, doctorId);
   }
 
   @Get()
   @ApiOperation({ summary: 'Get all patients' })
   @ApiResponse({ status: 200, type: [Patient] })
-  findAll(): Promise<Patient[]> {
-    return this.patientsService.findAll();
+  findAll(
+    @Headers('x-user-role') role: string,
+    @Headers('x-user-id') doctorId: string,
+  ): Promise<Patient[]> {
+    return this.patientsService.findAll(role, doctorId);
   }
 
   @Get(':id')
   @ApiOperation({ summary: 'Get a patient by ID' })
   @ApiResponse({ status: 200, type: Patient })
-  findOne(@Param('id', ParseUUIDPipe) id: string): Promise<Patient> {
-    return this.patientsService.findOne(id);
+  findOne(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Headers('x-user-role') role: string,
+    @Headers('x-user-id') doctorId: string,
+  ): Promise<Patient> {
+    return this.patientsService.findOne(id, role, doctorId);
   }
 
   @Put(':id')
@@ -40,14 +50,20 @@ export class PatientsController {
   update(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdatePatientDto,
+    @Headers('x-user-role') role: string,
+    @Headers('x-user-id') doctorId: string,
   ): Promise<Patient> {
-    return this.patientsService.update(id, dto);
+    return this.patientsService.update(id, dto, role, doctorId);
   }
 
   @Delete(':id')
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Soft delete a patient' })
-  remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {
-    return this.patientsService.remove(id);
+  remove(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Headers('x-user-role') role: string,
+    @Headers('x-user-id') doctorId: string,
+  ): Promise<void> {
+    return this.patientsService.remove(id, role, doctorId);
   }
 }

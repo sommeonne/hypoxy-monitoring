@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Form, Input, Button, Card, Typography, Alert } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { login } from '../api/auth';
 
 const { Title, Text } = Typography;
@@ -55,6 +56,7 @@ function HeartPulseLogo() {
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -63,6 +65,7 @@ export default function LoginPage() {
     setError(null);
     try {
       const { access_token } = await login(values.username, values.password);
+      queryClient.clear();
       localStorage.setItem('access_token', access_token);
       navigate('/dashboard', { replace: true });
     } catch (e: any) {

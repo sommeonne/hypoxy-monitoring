@@ -15,18 +15,18 @@
  *   GATEWAY_URL    API gateway base URL  (default: http://localhost:3000)
  *   DEVICE_URL     Device service URL    (default: http://localhost:3001)
  *   INTERVAL_MS    Interval in ms        (default: 2000)
- *   SIM_USERNAME   Login username        (default: admin)
- *   SIM_PASSWORD   Login password        (default: admin123)
+ *   SIM_USERNAME   Login username        (default: doctor) — must be a doctor account, not admin
+ *   SIM_PASSWORD   Login password        (default: doctor123)
  *   SIM_TOKEN      Pre-existing JWT (skips login)
  *   DEFAULT_O2     Fallback O₂% when session has none set (default: 21)
  */
 
-const GATEWAY_URL = process.env.GATEWAY_URL  ?? 'http://localhost:3000';
-const DEVICE_URL  = process.env.DEVICE_URL   ?? 'http://localhost:3001';
+const GATEWAY_URL = process.env.GATEWAY_URL  
+const DEVICE_URL  = process.env.DEVICE_URL
 const INTERVAL_MS = Number(process.env.INTERVAL_MS ?? 2000);
-const USERNAME    = process.env.SIM_USERNAME ?? 'admin';
-const PASSWORD    = process.env.SIM_PASSWORD ?? 'admin123';
-const INIT_TOKEN  = process.env.SIM_TOKEN    ?? null;
+const USERNAME    = process.env.SIM_USERNAME 
+const PASSWORD    = process.env.SIM_PASSWORD 
+const INIT_TOKEN  = process.env.SIM_TOKEN
 const DEFAULT_O2  = Number(process.env.DEFAULT_O2 ?? 21);
 
 const c = {
@@ -67,6 +67,15 @@ function baselineForO2(o2) {
 
 let token = null;
 
+function decodeJwtRole(jwt) {
+  try {
+    const payload = JSON.parse(Buffer.from(jwt.split('.')[1], 'base64').toString());
+    return payload.role ?? null;
+  } catch {
+    return null;
+  }
+}
+
 async function login() {
   const res = await fetch(`${GATEWAY_URL}/auth/login`, {
     method: 'POST',
@@ -76,6 +85,11 @@ async function login() {
   if (!res.ok) throw new Error(`Login failed: ${res.status}`);
   const data = await res.json();
   token = data.access_token;
+
+  const role = decodeJwtRole(token);
+  if (role === 'admin') {
+    throw new Error(`User "${USERNAME}" has role "admin". The simulator must run as a doctor. Set SIM_USERNAME and SIM_PASSWORD to a doctor account.`);
+  }
 }
 
 // Per-session state: keeps values walking smoothly between ticks
