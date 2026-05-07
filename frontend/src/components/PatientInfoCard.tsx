@@ -128,16 +128,16 @@ export default function PatientInfoCard({
         {/* Row 3 */}
         <Field label="Height" value={height != null ? `${height} cm` : null} />
         <Field label="Weight" value={weight != null ? `${weight} kg` : null} />
-        <Field label="Phone"  value={phone} />
+        <Field label="Baseline HR (bpm)" value={baselineHeartRate != null ? String(baselineHeartRate) : null} />
 
         {/* Row 4 */}
-        <Field label="Email"   value={email} />
-        <Field label="Address" value={address} span />
-
-        {/* Row 5 — baseline vitals */}
-        <Field label="Baseline HR (bpm)"  value={baselineHeartRate != null ? String(baselineHeartRate) : null} />
         <Field label="Baseline RR (/min)" value={baselineRespiratoryRate != null ? String(baselineRespiratoryRate) : null} />
-        <Field label="Tidal Volume (mL)"  value={tidalVolume != null ? String(tidalVolume) : null} noBorder />
+        <Field label="Tidal Volume (mL)"  value={tidalVolume != null ? String(tidalVolume) : null} />
+        <Field label="Phone" value={phone} />
+
+        {/* Row 5 */}
+        <Field label="Email"   value={email} />
+        <Field label="Address" value={address} span noBorder />
 
       </div>
     </div>

@@ -31,6 +31,10 @@ export class Measurement {
   @Column({ type: 'float', nullable: true })
   o2Percentage: number;
 
+  @ApiProperty({ nullable: true })
+  @Column({ type: 'float', nullable: true })
+  tidalVolume: number;
+
   @ApiProperty()
   @CreateDateColumn()
   createdAt: Date;

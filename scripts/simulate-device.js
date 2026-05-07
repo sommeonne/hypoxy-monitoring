@@ -62,6 +62,7 @@ function baselineForO2(o2) {
     spo2:            Math.max(60,  Math.round((97  - deficit * 2.0)  * 10) / 10),
     heartRate:       Math.min(200, Math.round( 72  + deficit * 5.1)),
     respiratoryRate: Math.min(50,  Math.round((16  + deficit * 1.4)  * 10) / 10),
+    tidalVolume:     Math.min(1200, Math.round(500 + deficit * 30)),
   };
 }
 
@@ -102,6 +103,7 @@ function getOrInitState(sessionId, o2) {
       spo2:            bl.spo2,
       heartRate:       bl.heartRate,
       respiratoryRate: bl.respiratoryRate,
+      tidalVolume:     bl.tidalVolume,
       o2Percentage:    o2,
     };
   }
@@ -123,6 +125,7 @@ function nextReading(sessionId, setO2) {
   s.spo2            = walk(s.spo2,            0.7,  bl.spo2 - 8,  Math.min(100, bl.spo2 + 3));
   s.heartRate       = walk(s.heartRate,        2.5,  bl.heartRate - 15, bl.heartRate + 20);
   s.respiratoryRate = walk(s.respiratoryRate,  0.4,  bl.respiratoryRate - 4, bl.respiratoryRate + 6);
+  s.tidalVolume     = walk(s.tidalVolume,      15,   bl.tidalVolume - 80, bl.tidalVolume + 80);
   // O₂ measured at device varies ±0.4% around the set point
   s.o2Percentage    = walk(s.o2Percentage,     0.2,  Math.max(10, o2 - 0.5), Math.min(21, o2 + 0.5));
 
@@ -130,6 +133,7 @@ function nextReading(sessionId, setO2) {
     spo2:            Math.round(s.spo2            * 10) / 10,
     heartRate:       Math.round(s.heartRate),
     respiratoryRate: Math.round(s.respiratoryRate * 10) / 10,
+    tidalVolume:     Math.round(s.tidalVolume),
     o2Percentage:    Math.round(s.o2Percentage    * 10) / 10,
   };
 }
@@ -198,7 +202,8 @@ async function tick() {
         `  O₂(meas) ${o2Label(reading.o2Percentage)}` +
         `  SpO₂ ${spo2Label(reading.spo2)}` +
         `  HR ${c.white}${reading.heartRate}${c.reset} bpm` +
-        `  RR ${c.white}${reading.respiratoryRate}${c.reset} /min`,
+        `  RR ${c.white}${reading.respiratoryRate}${c.reset} /min` +
+        `  TV ${c.white}${reading.tidalVolume}${c.reset} mL`,
       );
     } catch (e) {
       err(`Session ${session.id.slice(0, 8)}… — ${e.message}`);

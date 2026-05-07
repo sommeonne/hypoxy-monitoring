@@ -15,7 +15,7 @@ import dayjs from 'dayjs';
 
 interface Props {
   measurements: Measurement[];
-  metric: 'spo2' | 'heartRate' | 'respiratoryRate' | 'o2Percentage';
+  metric: 'spo2' | 'heartRate' | 'respiratoryRate' | 'o2Percentage' | 'tidalVolume';
   color: string;
   name: string;
   unit: string;

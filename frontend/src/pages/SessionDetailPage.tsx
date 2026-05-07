@@ -509,16 +509,17 @@ export default function SessionDetailPage() {
           <Col xs={24} md={14}>
             <Card
               title={<SectionTitle>Latest Vitals</SectionTitle>}
-              style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none', height: '100%' }}
+              style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none', minHeight: '100%' }}
               styles={{ body: { padding: 20 } }}
             >
               <LatestVitals
                 vitals={{
-                  spo2:      latest.spo2,
-                  heartRate: latest.heartRate,
-                  respRate:  latest.respiratoryRate,
-                  o2:        latest.o2Percentage,
-                  updatedAt: latest.createdAt,
+                  spo2:        latest.spo2,
+                  heartRate:   latest.heartRate,
+                  respRate:    latest.respiratoryRate,
+                  o2:          latest.o2Percentage,
+                  tidalVolume: latest.tidalVolume,
+                  updatedAt:   latest.createdAt,
                   trends: (() => {
                     const win = [...displayData].slice(0, 20).reverse();
                     return {
@@ -603,6 +604,22 @@ export default function SessionDetailPage() {
               referenceValue={session.o2Percentage}
               referenceLabel={session.o2Percentage ? `Set: ${session.o2Percentage}%` : undefined}
               referenceColor="#F59E0B"
+            />
+          </Card>
+        </Col>
+        <Col xs={24} md={12}>
+          <Card
+            title={<SectionTitle>Tidal Volume (mL)</SectionTitle>}
+            style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
+            styles={{ body: { padding: '8px 16px 16px' } }}
+          >
+            <MeasurementChart
+              measurements={displayData}
+              metric="tidalVolume"
+              color="#F59E0B"
+              name="TV"
+              unit=" mL"
+              domain={[200, 1000]}
             />
           </Card>
         </Col>

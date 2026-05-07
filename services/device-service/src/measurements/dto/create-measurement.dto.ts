@@ -36,4 +36,11 @@ export class CreateMeasurementDto {
   @Min(10)
   @Max(21)
   o2Percentage?: number;
+
+  @ApiProperty({ description: 'Tidal volume in mL', minimum: 200, maximum: 1500, required: false })
+  @IsOptional()
+  @IsNumber()
+  @Min(200)
+  @Max(1500)
+  tidalVolume?: number;
 }

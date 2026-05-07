@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Popconfirm, Typography } from 'antd';
-import { PlusOutlined, DeleteOutlined } from '@ant-design/icons';
+import { PlusOutlined, DeleteOutlined, EditOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchUsers, createUser, deleteUser, User } from '../api/users';
+import { fetchUsers, createUser, updateUser, deleteUser, User } from '../api/users';
 import { fetchSpecializations } from '../api/specializations';
 
 const { Text } = Typography;
@@ -37,8 +37,10 @@ function InitialsAvatar({ name }: { name: string }) {
 
 export default function DoctorsPage() {
   const queryClient = useQueryClient();
-  const [isOpen, setIsOpen] = useState(false);
-  const [form] = Form.useForm();
+  const [createOpen, setCreateOpen] = useState(false);
+  const [editUser, setEditUser] = useState<User | null>(null);
+  const [createForm] = Form.useForm();
+  const [editForm] = Form.useForm();
 
   const { data: all = [], isLoading } = useQuery({
     queryKey: ['users'],
@@ -54,8 +56,16 @@ export default function DoctorsPage() {
     mutationFn: createUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
-      setIsOpen(false);
-      form.resetFields();
+      setCreateOpen(false);
+      createForm.resetFields();
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string; data: any }) => updateUser(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['users'] });
+      setEditUser(null);
     },
   });
 
@@ -64,16 +74,25 @@ export default function DoctorsPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['users'] }),
   });
 
+  const openEdit = (user: User) => {
+    setEditUser(user);
+    editForm.setFieldsValue({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      specialization: user.specialization,
+    });
+  };
+
+  const specializationOptions = specializations.map((s) => ({ value: s.name, label: s.name }));
+
   const columns = [
     {
       title: <span className="label-caps">Name</span>,
       render: (_: any, d: User) => (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <InitialsAvatar name={`${d.firstName} ${d.lastName}`} />
-          <div>
-            <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 13 }}>
-              {d.firstName} {d.lastName}
-            </div>
+          <div style={{ fontWeight: 600, color: '#0F172A', fontSize: 13 }}>
+            {d.firstName} {d.lastName}
           </div>
         </div>
       ),
@@ -93,13 +112,6 @@ export default function DoctorsPage() {
       ),
     },
     {
-      title: <span className="label-caps">Username</span>,
-      dataIndex: 'username',
-      render: (u: string) => (
-        <Text style={{ color: '#64748B', fontSize: 13, fontFamily: 'monospace' }}>@{u}</Text>
-      ),
-    },
-    {
       title: <span className="label-caps">Created</span>,
       dataIndex: 'createdAt',
       width: 130,
@@ -109,53 +121,78 @@ export default function DoctorsPage() {
     },
     {
       title: '',
-      width: 60,
+      width: 80,
       render: (_: any, d: User) => (
-        <Popconfirm
-          title={
-            <span style={{ fontWeight: 600, color: '#0F172A' }}>Delete user account?</span>
-          }
-          description={
-            <span style={{ color: '#64748B', fontSize: 12 }}>
-              This action cannot be undone.
-            </span>
-          }
-          onConfirm={() => deleteMutation.mutate(d.id)}
-          okText="Delete"
-          cancelText="Cancel"
-          okButtonProps={{
-            style: { background: '#E24B4A', borderColor: '#E24B4A', fontWeight: 600 },
-          }}
-          placement="leftTop"
-        >
+        <div style={{ display: 'flex', gap: 4 }}>
           <Button
             type="text"
-            icon={<DeleteOutlined />}
+            icon={<EditOutlined />}
             size="small"
-            className="delete-row-btn"
             style={{ color: '#94A3B8' }}
-            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = '#E24B4A')}
+            onClick={() => openEdit(d)}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = '#1D9E75')}
             onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = '#94A3B8')}
           />
-        </Popconfirm>
+          <Popconfirm
+            title={<span style={{ fontWeight: 600, color: '#0F172A' }}>Delete user account?</span>}
+            description={<span style={{ color: '#64748B', fontSize: 12 }}>This action cannot be undone.</span>}
+            onConfirm={() => deleteMutation.mutate(d.id)}
+            okText="Delete"
+            cancelText="Cancel"
+            okButtonProps={{ style: { background: '#E24B4A', borderColor: '#E24B4A', fontWeight: 600 } }}
+            placement="leftTop"
+          >
+            <Button
+              type="text"
+              icon={<DeleteOutlined />}
+              size="small"
+              style={{ color: '#94A3B8' }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLElement).style.color = '#E24B4A')}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLElement).style.color = '#94A3B8')}
+            />
+          </Popconfirm>
+        </div>
       ),
     },
   ];
 
+  const userFormFields = (
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+        <Form.Item
+          name="firstName"
+          label={<span style={{ fontWeight: 500, fontSize: 13 }}>First Name</span>}
+          rules={[{ required: true }]}
+        >
+          <Input />
+        </Form.Item>
+        <Form.Item
+          name="lastName"
+          label={<span style={{ fontWeight: 500, fontSize: 13 }}>Last Name</span>}
+          rules={[{ required: true }]}
+        >
+          <Input />
+        </Form.Item>
+      </div>
+      <Form.Item
+        name="specialization"
+        label={<span style={{ fontWeight: 500, fontSize: 13 }}>Specialization</span>}
+      >
+        <Select
+          placeholder="Select specialization"
+          allowClear
+          showSearch
+          options={specializationOptions}
+        />
+      </Form.Item>
+    </>
+  );
+
   return (
     <div>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: 24,
-        }}
-      >
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: '0 0 4px' }}>
-            Doctors
-          </h1>
+          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: '0 0 4px' }}>Doctors</h1>
           <Text style={{ color: '#64748B', fontSize: 13 }}>
             {doctors.length} account{doctors.length !== 1 ? 's' : ''}
           </Text>
@@ -163,21 +200,14 @@ export default function DoctorsPage() {
         <Button
           type="primary"
           icon={<PlusOutlined />}
-          onClick={() => setIsOpen(true)}
+          onClick={() => setCreateOpen(true)}
           style={{ fontWeight: 600 }}
         >
           Add Doctor
         </Button>
       </div>
 
-      <div
-        style={{
-          background: '#fff',
-          borderRadius: 12,
-          border: '1px solid #E2E8F0',
-          overflow: 'hidden',
-        }}
-      >
+      <div style={{ background: '#fff', borderRadius: 12, border: '1px solid #E2E8F0', overflow: 'hidden' }}>
         <Table
           dataSource={doctors}
           columns={columns}
@@ -188,74 +218,56 @@ export default function DoctorsPage() {
         />
       </div>
 
+      {/* Create modal */}
       <Modal
-        title={
-          <span style={{ fontWeight: 700, fontSize: 16, color: '#0F172A' }}>
-            Add Doctor Account
-          </span>
-        }
-        open={isOpen}
-        onCancel={() => { setIsOpen(false); form.resetFields(); }}
-        onOk={() => form.submit()}
+        title={<span style={{ fontWeight: 700, fontSize: 16, color: '#0F172A' }}>Add Doctor Account</span>}
+        open={createOpen}
+        onCancel={() => { setCreateOpen(false); createForm.resetFields(); }}
+        onOk={() => createForm.submit()}
         confirmLoading={createMutation.isPending}
         okText="Create Account"
         okButtonProps={{ style: { background: '#1D9E75', borderColor: '#1D9E75', fontWeight: 600 } }}
       >
         <Form
-          form={form}
+          form={createForm}
           layout="vertical"
           style={{ marginTop: 16 }}
           onFinish={(v) => createMutation.mutate(v)}
           requiredMark={false}
         >
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
-            <Form.Item
-              name="firstName"
-              label={<span style={{ fontWeight: 500, fontSize: 13 }}>First Name</span>}
-              rules={[{ required: true }]}
-            >
-              <Input />
-            </Form.Item>
-            <Form.Item
-              name="lastName"
-              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Last Name</span>}
-              rules={[{ required: true }]}
-            >
-              <Input />
-            </Form.Item>
-          </div>
-          <Form.Item
-            name="specialization"
-            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Specialization</span>}
-          >
-            <Select
-              placeholder="Select specialization"
-              allowClear
-              showSearch
-              options={specializations.map((s) => ({ value: s.name, label: s.name }))}
-            />
-          </Form.Item>
+          {userFormFields}
           <Form.Item
             name="email"
-            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Email</span>}
+            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Google Email</span>}
             rules={[{ required: true }, { type: 'email', message: 'Invalid email' }]}
           >
-            <Input placeholder="doctor@hospital.com" />
+            <Input placeholder="doctor@gmail.com" />
           </Form.Item>
-          <Form.Item
-            name="username"
-            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Username</span>}
-            rules={[{ required: true }]}
-          >
-            <Input />
-          </Form.Item>
-          <Form.Item
-            name="password"
-            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Password</span>}
-            rules={[{ required: true, min: 6 }]}
-          >
-            <Input.Password />
-          </Form.Item>
+        </Form>
+      </Modal>
+
+      {/* Edit modal */}
+      <Modal
+        title={
+          <span style={{ fontWeight: 700, fontSize: 16, color: '#0F172A' }}>
+            Edit — {editUser?.firstName} {editUser?.lastName}
+          </span>
+        }
+        open={!!editUser}
+        onCancel={() => setEditUser(null)}
+        onOk={() => editForm.submit()}
+        confirmLoading={updateMutation.isPending}
+        okText="Save"
+        okButtonProps={{ style: { background: '#1D9E75', borderColor: '#1D9E75', fontWeight: 600 } }}
+      >
+        <Form
+          form={editForm}
+          layout="vertical"
+          style={{ marginTop: 16 }}
+          onFinish={(v) => updateMutation.mutate({ id: editUser!.id, data: v })}
+          requiredMark={false}
+        >
+          {userFormFields}
         </Form>
       </Modal>
     </div>

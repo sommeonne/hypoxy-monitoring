@@ -15,6 +15,7 @@ export interface VitalsData {
   o2?: number;
   heartRate: number;
   respRate: number;
+  tidalVolume?: number;
   updatedAt: string;
   trends?: VitalTrends;
 }
@@ -153,52 +154,52 @@ export default function LatestVitals({ vitals }: { vitals: VitalsData }) {
   const rrStatus_ = rrStatus(vitals.respRate);
 
   return (
-    <div
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '1fr 1fr',
-        gridTemplateRows: '1fr 1fr',
-        gap: 10,
-      }}
-    >
+    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+      <MetricTile
+        label="SpO₂"
+        value={vitals.spo2}
+        unit="%"
+        status={s2Status}
+        ariaLabel={`SpO2 ${vitals.spo2} percent, ${STATUS_TOKEN[s2Status].label}`}
+      />
+
+      {vitals.o2 != null ? (
         <MetricTile
-          label="SpO₂"
-          value={vitals.spo2}
+          label="O₂ Conc."
+          value={vitals.o2}
           unit="%"
-          status={s2Status}
-          ariaLabel={`SpO2 ${vitals.spo2} percent, ${STATUS_TOKEN[s2Status].label}`}
+          status="info"
+          ariaLabel={`Inhaled O2 concentration ${vitals.o2} percent`}
         />
+      ) : (
+        <div />
+      )}
 
-        {vitals.o2 != null ? (
-          <MetricTile
-            label="O₂ Conc."
-            value={vitals.o2}
-            unit="%"
-            status="info"
-            ariaLabel={`Inhaled O2 concentration ${vitals.o2} percent`}
+      <MetricTile
+        label="Heart Rate"
+        value={vitals.heartRate}
+        unit="bpm"
+        status={hrStatus_}
+        ariaLabel={`Heart rate ${vitals.heartRate} beats per minute, ${STATUS_TOKEN[hrStatus_].label}`}
+      />
 
-          />
-        ) : (
-          <div />
-        )}
+      <MetricTile
+        label="Resp. Rate"
+        value={vitals.respRate}
+        unit="/min"
+        status={rrStatus_}
+        ariaLabel={`Respiratory rate ${vitals.respRate} breaths per minute, ${STATUS_TOKEN[rrStatus_].label}`}
+      />
 
+      {vitals.tidalVolume != null && (
         <MetricTile
-          label="Heart Rate"
-          value={vitals.heartRate}
-          unit="bpm"
-          status={hrStatus_}
-          ariaLabel={`Heart rate ${vitals.heartRate} beats per minute, ${STATUS_TOKEN[hrStatus_].label}`}
-
+          label="Tidal Volume"
+          value={vitals.tidalVolume}
+          unit="mL"
+          status="info"
+          ariaLabel={`Tidal volume ${vitals.tidalVolume} millilitres`}
         />
-
-        <MetricTile
-          label="Resp. Rate"
-          value={vitals.respRate}
-          unit="/min"
-          status={rrStatus_}
-          ariaLabel={`Respiratory rate ${vitals.respRate} breaths per minute, ${STATUS_TOKEN[rrStatus_].label}`}
-
-        />
+      )}
     </div>
   );
 }
