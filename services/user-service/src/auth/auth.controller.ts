@@ -1,18 +1,32 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Controller, Get, Req, Res, UseGuards, UnauthorizedException } from '@nestjs/common';
+import { AuthGuard } from '@nestjs/passport';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { ConfigService } from '@nestjs/config';
+import { Response } from 'express';
 import { AuthService } from './auth.service';
-import { LoginDto } from './dto/login.dto';
 
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly authService: AuthService) {}
+  constructor(
+    private readonly authService: AuthService,
+    private readonly config: ConfigService,
+  ) {}
 
-  @Post('login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Login and get JWT token' })
-  @ApiResponse({ status: 200, description: 'Returns JWT access token and role' })
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.username, dto.password);
+  @Get('google')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Redirect to Google OAuth' })
+  googleAuth() {
+    // passport redirects automatically
+  }
+
+  @Get('google/callback')
+  @UseGuards(AuthGuard('google'))
+  @ApiOperation({ summary: 'Google OAuth callback' })
+  googleCallback(@Req() req: any, @Res() res: Response) {
+    if (!req.user) throw new UnauthorizedException();
+    const { access_token, role } = this.authService.googleLogin(req.user);
+    const frontendUrl = this.config.get('FRONTEND_URL', 'http://localhost:5173');
+    res.redirect(`${frontendUrl}/auth/callback?token=${access_token}&role=${role}`);
   }
 }

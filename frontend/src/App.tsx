@@ -9,6 +9,7 @@ import SessionDetailPage from './pages/SessionDetailPage';
 import DoctorsPage from './pages/DoctorsPage';
 import AdminSettingsPage from './pages/AdminSettingsPage';
 import LoginPage from './pages/LoginPage';
+import AuthCallbackPage from './pages/AuthCallbackPage';
 import { isLoggedIn, isAdmin } from './utils/auth';
 
 const { Content } = Layout;
@@ -33,6 +34,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
       <Route
         path="*"
         element={

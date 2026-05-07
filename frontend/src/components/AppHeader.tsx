@@ -9,7 +9,7 @@ import {
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { isAdmin, getUsername, logout } from '../utils/auth';
+import { isAdmin, getFullName, logout } from '../utils/auth';
 import AlertPanel from './AlertPanel';
 import { fetchPatients } from '../api/patients';
 
@@ -72,8 +72,13 @@ export default function AppHeader() {
     },
   };
 
-  const username = getUsername();
-  const initials = username ? username.slice(0, 2).toUpperCase() : 'U';
+  const fullName = getFullName();
+  const initials = fullName
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase() || 'U';
 
   return (
     <>
@@ -176,8 +181,8 @@ export default function AppHeader() {
               >
                 {initials}
               </Avatar>
-              <span style={{ color: '#CBD5E1', fontSize: 13, maxWidth: 90, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                {username}
+              <span style={{ color: '#CBD5E1', fontSize: 13, maxWidth: 120, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {fullName}
               </span>
             </div>
           </Dropdown>

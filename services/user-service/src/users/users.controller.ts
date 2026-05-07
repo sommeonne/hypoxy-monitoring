@@ -1,5 +1,5 @@
 import {
-  Controller, Get, Post, Delete, Body, Param,
+  Controller, Get, Post, Patch, Delete, Body, Param,
   ParseUUIDPipe, HttpCode, HttpStatus,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -24,6 +24,16 @@ export class UsersController {
   @ApiResponse({ status: 201, type: User })
   create(@Body() dto: CreateUserDto): Promise<User> {
     return this.usersService.create(dto);
+  }
+
+  @Patch(':id')
+  @ApiOperation({ summary: 'Update a user account' })
+  @ApiResponse({ status: 200, type: User })
+  update(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() body: Partial<{ firstName: string; lastName: string; specialization: string }>,
+  ): Promise<User> {
+    return this.usersService.update(id, body);
   }
 
   @Delete(':id')

@@ -29,7 +29,7 @@ const DEFAULT_URLS: Record<string, string> = {
 };
 
 // Routes that do not require a valid JWT before proxying
-const PUBLIC_ROUTE_PREFIXES = ['/api/auth'];
+const PUBLIC_ROUTE_PREFIXES = ['/api/auth/google', '/api/auth'];
 
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {

@@ -22,15 +22,16 @@ export class User {
   @Column()
   lastName: string;
 
-  @Column()
-  passwordHash: string;
+  @ApiProperty({ nullable: true })
+  @Column({ nullable: true })
+  googleId: string;
 
   @ApiProperty({ enum: ['admin', 'doctor'] })
   @Column({ default: 'doctor' })
   role: string;
 
   @ApiProperty({ nullable: true })
-  @Column({ nullable: true })
+  @Column({ nullable: true, unique: true })
   email: string;
 
   @ApiProperty({ nullable: true })

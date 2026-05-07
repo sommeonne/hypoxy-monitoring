@@ -2,6 +2,8 @@ interface TokenPayload {
   sub: string;
   username: string;
   role: string;
+  firstName: string;
+  lastName: string;
   exp: number;
 }
 
@@ -31,6 +33,12 @@ export function isAdmin(): boolean {
 
 export function getUsername(): string {
   return getTokenPayload()?.username ?? '';
+}
+
+export function getFullName(): string {
+  const p = getTokenPayload();
+  if (!p) return '';
+  return `${p.firstName} ${p.lastName}`.trim() || p.username;
 }
 
 export function logout(): void {
