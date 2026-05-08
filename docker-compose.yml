@@ -148,6 +148,7 @@ services:
     environment:
       <<: *common-env
       PORT: 3002
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
     ports:
       - "3002:3002"
     networks:

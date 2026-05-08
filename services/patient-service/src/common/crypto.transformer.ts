@@ -2,10 +2,18 @@ import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
 import { ValueTransformer } from 'typeorm';
 
 const ALGORITHM = 'aes-256-cbc';
-const KEY = Buffer.from(
-  process.env.ENCRYPTION_KEY || 'hypoxy-encryption-key-32-chars!!',
-  'utf8',
-).slice(0, 32);
+
+function loadKey(): Buffer {
+  const raw = process.env.ENCRYPTION_KEY;
+  if (!raw || raw.length < 64) {
+    throw new Error(
+      'ENCRYPTION_KEY must be a 64-char hex string.',
+    );
+  }
+  return Buffer.from(raw, 'hex');
+}
+
+const KEY = loadKey();
 
 export const encryptTransformer: ValueTransformer = {
   to(value: string | null): string | null {
@@ -24,7 +32,7 @@ export const encryptTransformer: ValueTransformer = {
       const decipher = createDecipheriv(ALGORITHM, KEY, iv);
       return Buffer.concat([decipher.update(encrypted), decipher.final()]).toString('utf8');
     } catch {
-      return value; // Return as-is if decryption fails (unencrypted legacy data)
+      throw new Error('Patient field decryption failed');
     }
   },
 };

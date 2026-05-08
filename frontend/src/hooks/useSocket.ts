@@ -18,5 +18,13 @@ export function useSocket() {
     return () => { socketRef.current.off(event, handler); };
   }, []);
 
-  return { socket: socketRef.current, on };
+  const joinSession = useCallback((sessionId: string) => {
+    socketRef.current.emit('join:session', sessionId);
+  }, []);
+
+  const leaveSession = useCallback((sessionId: string) => {
+    socketRef.current.emit('leave:session', sessionId);
+  }, []);
+
+  return { socket: socketRef.current, on, joinSession, leaveSession };
 }

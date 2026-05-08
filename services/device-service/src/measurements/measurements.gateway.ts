@@ -31,6 +31,6 @@ export class MeasurementsGateway
   }
 
   broadcastMeasurement(measurement: Measurement) {
-    this.server.emit('measurement:new', measurement);
+    this.server.to(`session:${measurement.sessionId}`).emit('measurement:new', measurement);
   }
 }

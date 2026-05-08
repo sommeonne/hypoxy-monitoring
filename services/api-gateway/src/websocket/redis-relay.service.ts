@@ -36,7 +36,18 @@ export class RedisRelayService implements OnModuleInit, OnModuleDestroy {
       const event = CHANNEL_EVENT[channel];
       if (!event) return;
       try {
-        this.gateway.server.emit(event, JSON.parse(message));
+        const payload = JSON.parse(message);
+        // measurements and analysis contain raw patient vitals — emit only to the
+        // session room so other doctors' browsers never receive this data
+        if (channel === 'measurements' || channel === 'analysis') {
+          const sessionId = payload.sessionId;
+          if (sessionId) {
+            this.gateway.server.to(`session:${sessionId}`).emit(event, payload);
+          }
+        } else {
+          // alerts and session lifecycle events broadcast to all connected clients
+          this.gateway.server.emit(event, payload);
+        }
       } catch (err) {
         this.logger.error(`Failed to relay ${channel} event`, err);
       }

@@ -28,7 +28,6 @@ const DEFAULT_URLS: Record<string, string> = {
   REPORT_SERVICE_URL: 'http://report-service:3006',
 };
 
-// Routes that do not require a valid JWT before proxying
 const PUBLIC_ROUTE_PREFIXES = ['/api/auth/google', '/api/auth'];
 
 @Injectable()
@@ -52,10 +51,7 @@ export class ProxyMiddleware implements NestMiddleware {
 
     if (!isPublic) {
       const authHeader = req.headers['authorization'];
-      const queryToken = req.query['token'] as string | undefined;
-      const rawToken = authHeader?.startsWith('Bearer ')
-        ? authHeader.slice(7)
-        : queryToken;
+      const rawToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : undefined;
 
       if (!rawToken) {
         res.status(401).json({ message: 'Unauthorized' });

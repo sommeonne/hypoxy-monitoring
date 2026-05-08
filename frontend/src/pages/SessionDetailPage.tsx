@@ -154,7 +154,7 @@ function LevelTag({ level }: { level: string }) {
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
-  const { on } = useSocket();
+  const { on, joinSession, leaveSession } = useSocket();
 
   const [liveData, setLiveData] = useState<Measurement[]>([]);
   const [alertFilter, setAlertFilter] = useState<AlertFilter>('ALL');
@@ -260,6 +260,12 @@ export default function SessionDetailPage() {
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['session', id] }),
   });
+
+  useEffect(() => {
+    if (!id) return;
+    joinSession(id);
+    return () => leaveSession(id);
+  }, [id, joinSession, leaveSession]);
 
   useEffect(() => {
     return on('measurement:new', (m: Measurement) => {
