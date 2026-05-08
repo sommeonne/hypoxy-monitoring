@@ -47,22 +47,58 @@ function warn(msg) { console.log(`${c.dim}[${ts()}]${c.reset} ${c.yellow}⚠${c.
 function err(msg)  { console.log(`${c.dim}[${ts()}]${c.reset} ${c.red}✗${c.reset} ${msg}`); }
 function ts()      { return new Date().toTimeString().slice(0, 8); }
 
-/**
- * Derive physiological baseline from inhaled O₂ concentration.
- *
- * Anchor points (approximate, based on altitude/normobaric hypoxia literature):
- *   21% (normoxia) → SpO₂ 97, HR 72, RR 16
- *   16%            → SpO₂ 93, HR 85, RR 20
- *   13%            → SpO₂ 86, HR 100, RR 25
- *   10%            → SpO₂ 75, HR 128, RR 31
- */
-function baselineForO2(o2) {
-  const deficit = 21 - o2; // 0 at normoxia, increases with hypoxia
+// Lookup table derived from the physiological reference chart.
+// Each entry: [o2pct, spo2Lo, spo2Hi, hrLo, hrHi, rrLo, rrHi, tvLo, tvHi]
+const O2_TABLE = [
+  { o2pct: 21, spo2: [96, 99], hr: [60,  80], rr: [12, 16], tv: [450, 550] },
+  { o2pct: 20, spo2: [95, 98], hr: [62,  81], rr: [12, 16], tv: [455, 555] },
+  { o2pct: 19, spo2: [94, 97], hr: [65,  82], rr: [12, 17], tv: [460, 560] },
+  { o2pct: 18, spo2: [94, 97], hr: [67,  83], rr: [13, 17], tv: [465, 565] },
+  { o2pct: 17, spo2: [93, 96], hr: [70,  85], rr: [13, 17], tv: [470, 570] },
+  { o2pct: 16, spo2: [91, 94], hr: [75,  90], rr: [14, 18], tv: [480, 580] },
+  { o2pct: 15, spo2: [89, 93], hr: [80,  95], rr: [15, 19], tv: [490, 600] },
+  { o2pct: 14, spo2: [87, 91], hr: [85, 100], rr: [16, 20], tv: [500, 620] },
+  { o2pct: 13, spo2: [84, 89], hr: [90, 105], rr: [17, 22], tv: [520, 640] },
+  { o2pct: 12, spo2: [81, 87], hr: [95, 110], rr: [18, 24], tv: [540, 670] },
+  { o2pct: 11, spo2: [78, 84], hr: [100, 118], rr: [20, 26], tv: [560, 710] },
+  { o2pct: 10, spo2: [75, 81], hr: [105, 125], rr: [22, 28], tv: [580, 750] },
+  { o2pct:  9, spo2: [70, 77], hr: [110, 130], rr: [25, 32], tv: [600, 780] },
+];
+
+function midpoint([lo, hi]) { return (lo + hi) / 2; }
+
+function interpolateRow(o2) {
+  // Exact match
+  const exact = O2_TABLE.find(r => r.o2pct === Math.round(o2));
+  if (exact) return exact;
+
+  // Clamp to table edges
+  if (o2 >= O2_TABLE[0].o2pct) return O2_TABLE[0];
+  if (o2 <= O2_TABLE[O2_TABLE.length - 1].o2pct) return O2_TABLE[O2_TABLE.length - 1];
+
+  // Linear interpolation between two nearest rows
+  const upper = O2_TABLE.find(r => r.o2pct <= o2);
+  const lower = O2_TABLE.slice().reverse().find(r => r.o2pct >= o2);
+  const t = (upper.o2pct - o2) / (upper.o2pct - lower.o2pct);
+  const lerp = ([a0, a1], [b0, b1]) => [a0 + (b0 - a0) * t, a1 + (b1 - a1) * t];
   return {
-    spo2:            Math.max(60,  Math.round((97  - deficit * 2.0)  * 10) / 10),
-    heartRate:       Math.min(200, Math.round( 72  + deficit * 5.1)),
-    respiratoryRate: Math.min(50,  Math.round((16  + deficit * 1.4)  * 10) / 10),
-    tidalVolume:     Math.min(1200, Math.round(500 + deficit * 30)),
+    o2pct: o2,
+    spo2: lerp(upper.spo2, lower.spo2),
+    hr:   lerp(upper.hr,   lower.hr),
+    rr:   lerp(upper.rr,   lower.rr),
+    tv:   lerp(upper.tv,   lower.tv),
+  };
+}
+
+function baselineForO2(o2) {
+  const row = interpolateRow(o2);
+  return {
+    spo2:            midpoint(row.spo2),
+    heartRate:       midpoint(row.hr),
+    respiratoryRate: midpoint(row.rr),
+    tidalVolume:     midpoint(row.tv),
+    // walk bounds come from the row's own range
+    bounds: { spo2: row.spo2, hr: row.hr, rr: row.rr, tv: row.tv },
   };
 }
 
@@ -110,6 +146,7 @@ function getOrInitState(sessionId, o2) {
   return state[sessionId];
 }
 
+
 function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
 
 function walk(v, step, min, max) {
@@ -120,14 +157,15 @@ function nextReading(sessionId, setO2) {
   const o2 = setO2 ?? DEFAULT_O2;
   const bl  = baselineForO2(o2);
   const s   = getOrInitState(sessionId, o2);
+  const b   = bl.bounds;
 
-  // Random-walk each value around its physiological baseline
-  s.spo2            = walk(s.spo2,            0.7,  bl.spo2 - 8,  Math.min(100, bl.spo2 + 3));
-  s.heartRate       = walk(s.heartRate,        2.5,  bl.heartRate - 15, bl.heartRate + 20);
-  s.respiratoryRate = walk(s.respiratoryRate,  0.4,  bl.respiratoryRate - 4, bl.respiratoryRate + 6);
-  s.tidalVolume     = walk(s.tidalVolume,      15,   bl.tidalVolume - 80, bl.tidalVolume + 80);
+  // Walk stays within the table's physiological range for this O₂
+  s.spo2            = walk(s.spo2,            0.6,  b.spo2[0], b.spo2[1]);
+  s.heartRate       = walk(s.heartRate,        2.0,  b.hr[0],   b.hr[1]);
+  s.respiratoryRate = walk(s.respiratoryRate,  0.4,  b.rr[0],   b.rr[1]);
+  s.tidalVolume     = walk(s.tidalVolume,      12,   b.tv[0],   b.tv[1]);
   // O₂ measured at device varies ±0.4% around the set point
-  s.o2Percentage    = walk(s.o2Percentage,     0.2,  Math.max(10, o2 - 0.5), Math.min(21, o2 + 0.5));
+  s.o2Percentage    = walk(s.o2Percentage,     0.2,  Math.max(9, o2 - 0.5), Math.min(21, o2 + 0.5));
 
   return {
     spo2:            Math.round(s.spo2            * 10) / 10,
@@ -160,14 +198,15 @@ async function postMeasurement(payload) {
 }
 
 function spo2Label(v) {
-  if (v < 80) return `${c.red}${c.bold}${v}%${c.reset}`;
-  if (v < 90) return `${c.yellow}${v}%${c.reset}`;
+  if (v < 78) return `${c.red}${c.bold}${v}%${c.reset}`;   // виражена гіпоксія
+  if (v < 89) return `${c.yellow}${v}%${c.reset}`;          // помірна
   return `${c.green}${v}%${c.reset}`;
 }
 
 function o2Label(v) {
-  if (v < 13) return `${c.red}${v}%${c.reset}`;
-  if (v < 17) return `${c.yellow}${v}%${c.reset}`;
+  if (v < 12) return `${c.red}${v}%${c.reset}`;    // виражена гіпоксія
+  if (v < 15) return `${c.yellow}${v}%${c.reset}`; // помірна
+  if (v < 17) return `${c.cyan}${v}%${c.reset}`;   // легка
   return `${c.blue}${v}%${c.reset}`;
 }
 
@@ -220,8 +259,11 @@ ${c.bold}${c.cyan}Hypoxy Device Simulator${c.reset}
   Interval : ${INTERVAL_MS} ms
   Default O₂: ${c.bold}${DEFAULT_O2}%${c.reset}
 
-  Physiology scales automatically with each session's set O₂ level.
-  Lower O₂ → lower SpO₂, elevated HR and RR.
+  Physiology is driven by the O₂ reference table:
+    21% (норма) → SpO₂ 96-99, HR 60-80, RR 12-16, TV 450-550 mL
+    16% (легка)  → SpO₂ 91-94, HR 75-90, RR 14-18
+    12% (помірна)→ SpO₂ 81-87, HR 95-110, RR 18-24
+     9% (виражена)→ SpO₂ 70-77, HR 110-130, RR 25-32
 
 ${c.dim}Press Ctrl+C to stop.${c.reset}
 `);
