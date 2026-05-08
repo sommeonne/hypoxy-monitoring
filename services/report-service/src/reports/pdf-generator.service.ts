@@ -39,11 +39,13 @@ export class PdfGeneratorService {
       // Patient
       y = this.section(doc, 'Patient Information', y);
       y = this.kvRows(doc, [
-        ['Full Name', `${patient.firstName} ${patient.lastName}`],
-        ['Date of Birth', new Date(patient.dateOfBirth).toLocaleDateString()],
-        ['Baseline HR (bpm)', patient.baselineHeartRate != null ? String(patient.baselineHeartRate) : '—'],
-        ['Baseline RR (/min)', patient.baselineRespiratoryRate != null ? String(patient.baselineRespiratoryRate) : '—'],
-        ['Tidal Volume (mL)', patient.tidalVolume != null ? String(patient.tidalVolume) : '—'],
+        ['Full Name',          `${patient.firstName} ${patient.lastName}`],
+        ['Date of Birth',      new Date(patient.dateOfBirth).toLocaleDateString()],
+        ['Height (cm)',        patient.height          != null ? String(patient.height)                   : '—'],
+        ['Weight (kg)',        patient.weight          != null ? String(patient.weight)                   : '—'],
+        ['Baseline HR (bpm)',  patient.baselineHeartRate        != null ? String(patient.baselineHeartRate)        : '—'],
+        ['Baseline RR (/min)', patient.baselineRespiratoryRate  != null ? String(patient.baselineRespiratoryRate)  : '—'],
+        ['Tidal Volume (mL)',  patient.tidalVolume     != null ? String(patient.tidalVolume)              : '—'],
       ], y);
       y += 10;
 

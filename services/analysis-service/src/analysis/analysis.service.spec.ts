@@ -39,44 +39,48 @@ describe('AnalysisService', () => {
     expect(mockAlertsHttp.createAlert).not.toHaveBeenCalled();
   });
 
-  it('should return CRITICAL for SpO2 < 90', async () => {
-    const result = await service.analyze({ ...base, spo2: 85 });
+  it('should return CRITICAL for SpO2 < 80', async () => {
+    const result = await service.analyze({ ...base, spo2: 79 });
     expect(result.level).toBe(AlertLevel.CRITICAL);
     expect(mockAlertsHttp.createAlert).toHaveBeenCalledTimes(1);
   });
 
-  it('should return WARNING for SpO2 between 90 and 94', async () => {
-    const result = await service.analyze({ ...base, spo2: 92 });
-    expect(result.level).toBe(AlertLevel.WARNING);
+  it('should return NORMAL for SpO2 >= 80', async () => {
+    const result = await service.analyze({ ...base, spo2: 80 });
+    expect(result.level).toBe(AlertLevel.NORMAL);
+    expect(mockAlertsHttp.createAlert).not.toHaveBeenCalled();
   });
 
-  it('should return WARNING for SpO2 > 98 (hyperoxia)', async () => {
-    const result = await service.analyze({ ...base, spo2: 99 });
-    expect(result.level).toBe(AlertLevel.WARNING);
-    expect(result.anomalies.some((a) => a.includes('hyperoxia'))).toBe(true);
-  });
-
-  it('should return WARNING for heart rate outside 60–100 range', async () => {
+  it('should return NORMAL for heart rate between 45 and 130', async () => {
     const result = await service.analyze({ ...base, heartRate: 120 });
-    expect(result.level).toBe(AlertLevel.WARNING);
-    expect(result.anomalies.some((a) => a.includes('Heart rate abnormal'))).toBe(true);
+    expect(result.level).toBe(AlertLevel.NORMAL);
   });
 
-  it('should return CRITICAL for heart rate < 40', async () => {
-    const result = await service.analyze({ ...base, heartRate: 35 });
+  it('should return CRITICAL for heart rate < 45', async () => {
+    const result = await service.analyze({ ...base, heartRate: 44 });
     expect(result.level).toBe(AlertLevel.CRITICAL);
     expect(result.anomalies.some((a) => a.includes('critically abnormal'))).toBe(true);
   });
 
-  it('should return CRITICAL for heart rate > 150', async () => {
-    const result = await service.analyze({ ...base, heartRate: 160 });
+  it('should return CRITICAL for heart rate > 130', async () => {
+    const result = await service.analyze({ ...base, heartRate: 131 });
     expect(result.level).toBe(AlertLevel.CRITICAL);
   });
 
-  it('should apply baselineSpO2 to lower the effective warning threshold', async () => {
-    // baseline=88 → effectiveThreshold=max(94,84)=94; spo2=91 is below 94 → WARNING
-    const result = await service.analyze({ ...base, spo2: 91, baselineSpO2: 88 });
-    expect(result.level).not.toBe(AlertLevel.NORMAL);
+  it('should return CRITICAL for tidal volume < 250 mL', async () => {
+    const result = await service.analyze({ ...base, tidalVolume: 200 });
+    expect(result.level).toBe(AlertLevel.CRITICAL);
+    expect(result.anomalies.some((a) => a.includes('Tidal volume'))).toBe(true);
+  });
+
+  it('should return CRITICAL for tidal volume > 900 mL', async () => {
+    const result = await service.analyze({ ...base, tidalVolume: 901 });
+    expect(result.level).toBe(AlertLevel.CRITICAL);
+  });
+
+  it('should return NORMAL for tidal volume within range', async () => {
+    const result = await service.analyze({ ...base, tidalVolume: 500 });
+    expect(result.level).toBe(AlertLevel.NORMAL);
   });
 
   it('should publish analysis result to Redis with level field', async () => {
@@ -85,5 +89,27 @@ describe('AnalysisService', () => {
       'analysis',
       expect.stringContaining('"level"'),
     );
+  });
+
+  it('computeConclusion: high tolerance + normal reaction', () => {
+    const result = service.computeConclusion({
+      finalSpo2: 90,
+      finalHeartRate: 72,
+      finalRespiratoryRate: 16,
+      firstHeartRate: 70,
+      firstRespiratoryRate: 15,
+    });
+    expect(result.conclusion).toBe('Hypoxia tolerance high, reaction normal');
+  });
+
+  it('computeConclusion: elevated hemodynamic reaction', () => {
+    const result = service.computeConclusion({
+      finalSpo2: 90,
+      finalHeartRate: 110,
+      finalRespiratoryRate: 16,
+      firstHeartRate: 70,
+      firstRespiratoryRate: 15,
+    });
+    expect(result.conclusion).toContain('hemodynamic reaction elevated');
   });
 });

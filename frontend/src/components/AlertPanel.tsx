@@ -4,7 +4,7 @@ import { useSocket } from '../hooks/useSocket';
 interface AlertData {
   id: string;
   patientId: string;
-  level: 'CRITICAL' | 'WARNING';
+  level: 'CRITICAL';
   message: string;
   values: Record<string, number>;
   createdAt: string;
@@ -12,7 +12,7 @@ interface AlertData {
 
 interface AlertGroup {
   key: string;
-  level: 'CRITICAL' | 'WARNING';
+  level: 'CRITICAL';
   title: string;
   subtitle: string;
   count: number;
@@ -24,6 +24,7 @@ const METRIC_LABELS: Record<string, string> = {
   spo2: 'SpO₂',
   heartRate: 'Heart Rate',
   respiratoryRate: 'Resp. Rate',
+  tidalVolume: 'Tidal Volume',
 };
 
 const WINDOW_MS = 60_000;
@@ -34,25 +35,17 @@ function getGroupKey(level: string, values: Record<string, number> | undefined):
   return `${level}_${metric}`;
 }
 
-function buildTitle(
-  level: 'CRITICAL' | 'WARNING',
-  values: Record<string, number> | undefined,
-): string {
+function buildTitle(values: Record<string, number> | undefined): string {
   const entries = Object.entries(values ?? {});
-  if (!entries.length) return level === 'CRITICAL' ? 'Critical Alert' : 'Warning';
+  if (!entries.length) return 'Critical Alert';
   const [key, val] = entries[0];
   const label = METRIC_LABELS[key] ?? key;
 
-  if (key === 'spo2') {
-    return `${label} ${level === 'CRITICAL' ? 'critically low' : 'low'} — ${val}%`;
-  }
-  if (key === 'heartRate') {
-    return `${label} ${val > 80 ? 'elevated' : 'low'} — ${val} bpm`;
-  }
-  if (key === 'respiratoryRate') {
-    return `${label} ${val > 20 ? 'elevated' : 'low'} — ${val}/min`;
-  }
-  return `${label} ${level === 'CRITICAL' ? 'critical' : 'warning'} — ${val}`;
+  if (key === 'spo2') return `${label} critically low — ${val}%`;
+  if (key === 'heartRate') return `${label} ${val > 100 ? 'elevated' : 'low'} — ${val} bpm`;
+  if (key === 'respiratoryRate') return `${label} ${val > 20 ? 'elevated' : 'low'} — ${val}/min`;
+  if (key === 'tidalVolume') return `${label} ${val > 700 ? 'elevated' : 'low'} — ${val} mL`;
+  return `${label} critical — ${val}`;
 }
 
 export default function AlertPanel({ patientIds }: { patientIds: Set<string> }) {
@@ -113,7 +106,7 @@ export default function AlertPanel({ patientIds }: { patientIds: Set<string> }) 
     osc.stop(t + duration + 0.05);
   }
 
-  function playSound(groupKey: string, type: 'critical' | 'warning' | 'tick') {
+  function playSound(groupKey: string, type: 'critical' | 'tick') {
     const now = Date.now();
     if (now - (lastSoundRef.current.get(groupKey) ?? 0) < SOUND_DEBOUNCE_MS) return;
     lastSoundRef.current.set(groupKey, now);
@@ -125,8 +118,6 @@ export default function AlertPanel({ patientIds }: { patientIds: Set<string> }) 
       // Two sharp beeps: 880Hz × 120ms, 80ms gap, 880Hz × 120ms
       playTone(ctx, 880, 0.12, 0.4, 0);
       playTone(ctx, 880, 0.12, 0.4, 0.20);
-    } else if (type === 'warning') {
-      playTone(ctx, 440, 0.20, 0.3, 0);
     } else {
       // Quiet tick for repeated collapse
       playTone(ctx, 660, 0.06, 0.2, 0);
@@ -139,12 +130,12 @@ export default function AlertPanel({ patientIds }: { patientIds: Set<string> }) 
       if (!ids.has(alert.patientId)) return;
       const now = Date.now();
       const key = getGroupKey(alert.level, alert.values);
-      const title = buildTitle(alert.level, alert.values);
+      const title = buildTitle(alert.values);
       const isCollapse = groupsRef.current.some(
         (g) => g.key === key && now - g.lastAt < WINDOW_MS,
       );
 
-      playSound(key, isCollapse ? 'tick' : alert.level === 'CRITICAL' ? 'critical' : 'warning');
+      playSound(key, isCollapse ? 'tick' : 'critical');
 
       setGroups((prev) => {
         const idx = prev.findIndex((g) => g.key === key && now - g.lastAt < WINDOW_MS);
@@ -177,7 +168,7 @@ export default function AlertPanel({ patientIds }: { patientIds: Set<string> }) 
     <div
       style={{
         position: 'fixed',
-        top: 72,
+        top: 64,
         right: 16,
         width: 320,
         zIndex: 1000,

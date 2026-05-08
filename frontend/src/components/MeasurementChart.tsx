@@ -73,6 +73,20 @@ export default function MeasurementChart({
       value: m[metric] ?? null,
     }));
 
+  const [hardMin, hardMax] = domain as [number, number];
+  const values = data.map((d) => d.value).filter((v): v is number => v !== null);
+  const dynamicDomain: [number, number] = values.length > 0
+    ? (() => {
+        const dMin = Math.min(...values);
+        const dMax = Math.max(...values);
+        const pad = Math.max((dMax - dMin) * 0.2, 1);
+        return [
+          Math.max(hardMin, Math.floor(dMin - pad)),
+          Math.min(hardMax, Math.ceil(dMax + pad)),
+        ];
+      })()
+    : [hardMin, hardMax];
+
   return (
     <ResponsiveContainer width="100%" height={height}>
       <LineChart data={data} margin={{ top: 8, right: 16, left: 0, bottom: 8 }}>
@@ -87,12 +101,12 @@ export default function MeasurementChart({
         />
 
         <YAxis
-          domain={domain}
+          domain={dynamicDomain}
           tick={{ fontSize: 10, fill: '#94A3B8' }}
           tickLine={false}
           axisLine={false}
           tickFormatter={(v) => `${v}${unit}`}
-          width={38}
+          width={unit.length > 2 ? 62 : 44}
         />
 
         <Tooltip content={<CustomTooltip unit={unit} />} />

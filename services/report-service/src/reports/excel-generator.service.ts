@@ -23,11 +23,13 @@ export class ExcelGeneratorService {
     ];
     summarySheet.getRow(1).font = { bold: true };
     summarySheet.addRows([
-      { field: 'Patient', value: `${patient.firstName} ${patient.lastName}` },
-      { field: 'Date of Birth', value: new Date(patient.dateOfBirth).toLocaleDateString() },
-      { field: 'Baseline HR (bpm)', value: patient.baselineHeartRate ?? 'N/A' },
+      { field: 'Patient',            value: `${patient.firstName} ${patient.lastName}` },
+      { field: 'Date of Birth',      value: new Date(patient.dateOfBirth).toLocaleDateString() },
+      { field: 'Height (cm)',        value: patient.height                 ?? 'N/A' },
+      { field: 'Weight (kg)',        value: patient.weight                 ?? 'N/A' },
+      { field: 'Baseline HR (bpm)',  value: patient.baselineHeartRate      ?? 'N/A' },
       { field: 'Baseline RR (/min)', value: patient.baselineRespiratoryRate ?? 'N/A' },
-      { field: 'Tidal Volume (mL)', value: patient.tidalVolume ?? 'N/A' },
+      { field: 'Tidal Volume (mL)',  value: patient.tidalVolume            ?? 'N/A' },
       { field: 'Session ID', value: session.id },
       { field: 'Started At', value: new Date(session.startedAt).toLocaleString() },
       {
@@ -48,18 +50,22 @@ export class ExcelGeneratorService {
     // Measurements sheet
     const measSheet = workbook.addWorksheet('Measurements');
     measSheet.columns = [
-      { header: 'Timestamp', key: 'createdAt', width: 25 },
-      { header: 'SpO2 (%)', key: 'spo2', width: 12 },
-      { header: 'Heart Rate (bpm)', key: 'heartRate', width: 18 },
-      { header: 'Respiratory Rate', key: 'respiratoryRate', width: 18 },
+      { header: 'Timestamp',              key: 'createdAt',        width: 25 },
+      { header: 'SpO2 (%)',               key: 'spo2',             width: 12 },
+      { header: 'Heart Rate (bpm)',        key: 'heartRate',        width: 18 },
+      { header: 'Respiratory Rate (/min)', key: 'respiratoryRate',  width: 22 },
+      { header: 'Tidal Volume (mL)',       key: 'tidalVolume',      width: 18 },
+      { header: 'O2 Conc. (%)',            key: 'o2Percentage',     width: 14 },
     ];
     measSheet.getRow(1).font = { bold: true };
     measurements.forEach((m) =>
       measSheet.addRow({
-        createdAt: new Date(m.createdAt).toLocaleString(),
-        spo2: m.spo2,
-        heartRate: m.heartRate,
+        createdAt:       new Date(m.createdAt).toLocaleString(),
+        spo2:            m.spo2,
+        heartRate:       m.heartRate,
         respiratoryRate: m.respiratoryRate,
+        tidalVolume:     m.tidalVolume    ?? null,
+        o2Percentage:    m.o2Percentage   ?? null,
       }),
     );
 
@@ -79,8 +85,6 @@ export class ExcelGeneratorService {
       });
       if (a.level === 'CRITICAL') {
         row.getCell('level').font = { color: { argb: 'FFFF0000' }, bold: true };
-      } else if (a.level === 'WARNING') {
-        row.getCell('level').font = { color: { argb: 'FFFF8C00' }, bold: true };
       }
     });
 

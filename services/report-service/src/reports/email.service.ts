@@ -38,7 +38,6 @@ export class EmailService {
     });
 
     const subject = `Hypoxy Therapy Session Report — ${dateStr}`;
-
     const filename = `session-report-${sessionDate.toISOString().slice(0, 10)}.pdf`;
 
     await this.transporter.sendMail({
@@ -51,21 +50,8 @@ export class EmailService {
           <p style="color: #64748B; margin-top: 0; font-size: 14px;">${dateStr}</p>
           <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;" />
           <p>Dear <strong>${patientName}</strong>,</p>
-          <p>
-            Please find attached the PDF report for your hypoxytherapy session
-            conducted on <strong>${dateStr}</strong>.
-          </p>
-          <p>
-            The report includes session details, vital sign measurements,
-            and any alerts triggered during the session.
-          </p>
-          ${conclusion ? `
-          <table style="border-collapse: collapse; margin: 16px 0; font-size: 14px;">
-            <tr>
-              <td style="padding: 6px 16px 6px 0; color: #64748B;">Conclusion</td>
-              <td style="padding: 6px 0; font-weight: 600; color: #0F172A;">${conclusion}</td>
-            </tr>
-          </table>` : ''}
+          <p>Please find attached the PDF report for your hypoxytherapy session conducted on <strong>${dateStr}</strong>.</p>
+          ${conclusion ? `<p style="color: #64748B; font-size: 14px;">Conclusion: <strong style="color: #0F172A;">${conclusion}</strong></p>` : ''}
           <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;" />
           <p style="color: #94A3B8; font-size: 12px;">Session ID: ${sessionId}</p>
         </div>

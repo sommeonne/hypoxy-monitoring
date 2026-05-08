@@ -48,41 +48,41 @@ function err(msg)  { console.log(`${c.dim}[${ts()}]${c.reset} ${c.red}✗${c.res
 function ts()      { return new Date().toTimeString().slice(0, 8); }
 
 // Lookup table derived from the physiological reference chart.
-// Each entry: [o2pct, spo2Lo, spo2Hi, hrLo, hrHi, rrLo, rrHi, tvLo, tvHi]
+// Each entry: [o2, spo2Lo, spo2Hi, hrLo, hrHi, rrLo, rrHi, tvLo, tvHi]
 const O2_TABLE = [
-  { o2pct: 21, spo2: [96, 99], hr: [60,  80], rr: [12, 16], tv: [450, 550] },
-  { o2pct: 20, spo2: [95, 98], hr: [62,  81], rr: [12, 16], tv: [455, 555] },
-  { o2pct: 19, spo2: [94, 97], hr: [65,  82], rr: [12, 17], tv: [460, 560] },
-  { o2pct: 18, spo2: [94, 97], hr: [67,  83], rr: [13, 17], tv: [465, 565] },
-  { o2pct: 17, spo2: [93, 96], hr: [70,  85], rr: [13, 17], tv: [470, 570] },
-  { o2pct: 16, spo2: [91, 94], hr: [75,  90], rr: [14, 18], tv: [480, 580] },
-  { o2pct: 15, spo2: [89, 93], hr: [80,  95], rr: [15, 19], tv: [490, 600] },
-  { o2pct: 14, spo2: [87, 91], hr: [85, 100], rr: [16, 20], tv: [500, 620] },
-  { o2pct: 13, spo2: [84, 89], hr: [90, 105], rr: [17, 22], tv: [520, 640] },
-  { o2pct: 12, spo2: [81, 87], hr: [95, 110], rr: [18, 24], tv: [540, 670] },
-  { o2pct: 11, spo2: [78, 84], hr: [100, 118], rr: [20, 26], tv: [560, 710] },
-  { o2pct: 10, spo2: [75, 81], hr: [105, 125], rr: [22, 28], tv: [580, 750] },
-  { o2pct:  9, spo2: [70, 77], hr: [110, 130], rr: [25, 32], tv: [600, 780] },
+  { o2: 21, spo2: [96, 99], hr: [60,  80], rr: [12, 16], tv: [450, 550] },
+  { o2: 20, spo2: [95, 98], hr: [62,  81], rr: [12, 16], tv: [455, 555] },
+  { o2: 19, spo2: [94, 97], hr: [65,  82], rr: [12, 17], tv: [460, 560] },
+  { o2: 18, spo2: [94, 97], hr: [67,  83], rr: [13, 17], tv: [465, 565] },
+  { o2: 17, spo2: [93, 96], hr: [70,  85], rr: [13, 17], tv: [470, 570] },
+  { o2: 16, spo2: [91, 94], hr: [75,  90], rr: [14, 18], tv: [480, 580] },
+  { o2: 15, spo2: [89, 93], hr: [80,  95], rr: [15, 19], tv: [490, 600] },
+  { o2: 14, spo2: [87, 91], hr: [85, 100], rr: [16, 20], tv: [500, 620] },
+  { o2: 13, spo2: [84, 89], hr: [90, 105], rr: [17, 22], tv: [520, 640] },
+  { o2: 12, spo2: [81, 87], hr: [95, 110], rr: [18, 24], tv: [540, 670] },
+  { o2: 11, spo2: [78, 84], hr: [100, 118], rr: [20, 26], tv: [560, 710] },
+  { o2: 10, spo2: [75, 81], hr: [105, 125], rr: [22, 28], tv: [580, 750] },
+  { o2:  9, spo2: [70, 77], hr: [110, 130], rr: [25, 32], tv: [600, 780] },
 ];
 
 function midpoint([lo, hi]) { return (lo + hi) / 2; }
 
 function interpolateRow(o2) {
   // Exact match
-  const exact = O2_TABLE.find(r => r.o2pct === Math.round(o2));
+  const exact = O2_TABLE.find(r => r.o2 === Math.round(o2));
   if (exact) return exact;
 
   // Clamp to table edges
-  if (o2 >= O2_TABLE[0].o2pct) return O2_TABLE[0];
-  if (o2 <= O2_TABLE[O2_TABLE.length - 1].o2pct) return O2_TABLE[O2_TABLE.length - 1];
+  if (o2 >= O2_TABLE[0].o2) return O2_TABLE[0];
+  if (o2 <= O2_TABLE[O2_TABLE.length - 1].o2) return O2_TABLE[O2_TABLE.length - 1];
 
   // Linear interpolation between two nearest rows
-  const upper = O2_TABLE.find(r => r.o2pct <= o2);
-  const lower = O2_TABLE.slice().reverse().find(r => r.o2pct >= o2);
-  const t = (upper.o2pct - o2) / (upper.o2pct - lower.o2pct);
+  const upper = O2_TABLE.find(r => r.o2 <= o2);
+  const lower = O2_TABLE.slice().reverse().find(r => r.o2 >= o2);
+  const t = (upper.o2 - o2) / (upper.o2 - lower.o2);
   const lerp = ([a0, a1], [b0, b1]) => [a0 + (b0 - a0) * t, a1 + (b1 - a1) * t];
   return {
-    o2pct: o2,
+    o2: o2,
     spo2: lerp(upper.spo2, lower.spo2),
     hr:   lerp(upper.hr,   lower.hr),
     rr:   lerp(upper.rr,   lower.rr),
@@ -198,15 +198,15 @@ async function postMeasurement(payload) {
 }
 
 function spo2Label(v) {
-  if (v < 78) return `${c.red}${c.bold}${v}%${c.reset}`;   // виражена гіпоксія
-  if (v < 89) return `${c.yellow}${v}%${c.reset}`;          // помірна
+  if (v < 78) return `${c.red}${c.bold}${v}%${c.reset}`;   // severe hypoxia
+  if (v < 89) return `${c.yellow}${v}%${c.reset}`;          // moderate
   return `${c.green}${v}%${c.reset}`;
 }
 
 function o2Label(v) {
-  if (v < 12) return `${c.red}${v}%${c.reset}`;    // виражена гіпоксія
-  if (v < 15) return `${c.yellow}${v}%${c.reset}`; // помірна
-  if (v < 17) return `${c.cyan}${v}%${c.reset}`;   // легка
+  if (v < 12) return `${c.red}${v}%${c.reset}`;    // severe hypoxia
+  if (v < 15) return `${c.yellow}${v}%${c.reset}`; // moderate
+  if (v < 17) return `${c.cyan}${v}%${c.reset}`;   // mild
   return `${c.blue}${v}%${c.reset}`;
 }
 
@@ -250,23 +250,8 @@ async function tick() {
   }
 }
 
-// Print startup banner after we know token status
 function printBanner() {
-  console.log(`
-${c.bold}${c.cyan}Hypoxy Device Simulator${c.reset}
-  Gateway  : ${GATEWAY_URL}
-  Device   : ${DEVICE_URL}
-  Interval : ${INTERVAL_MS} ms
-  Default O₂: ${c.bold}${DEFAULT_O2}%${c.reset}
-
-  Physiology is driven by the O₂ reference table:
-    21% (норма) → SpO₂ 96-99, HR 60-80, RR 12-16, TV 450-550 mL
-    16% (легка)  → SpO₂ 91-94, HR 75-90, RR 14-18
-    12% (помірна)→ SpO₂ 81-87, HR 95-110, RR 18-24
-     9% (виражена)→ SpO₂ 70-77, HR 110-130, RR 25-32
-
-${c.dim}Press Ctrl+C to stop.${c.reset}
-`);
+  console.log(`${c.bold}${c.cyan}Hypoxy Device Simulator${c.reset}  ${c.dim}Press Ctrl+C to stop.${c.reset}`);
 }
 
 if (INIT_TOKEN) {

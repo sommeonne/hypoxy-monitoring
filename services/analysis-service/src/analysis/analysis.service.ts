@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { AlertLevel, THRESHOLDS, Measurement, AnalysisResult } from './thresholds';
+import { AlertLevel, THRESHOLDS, Measurement, AnalysisResult, ConcludeRequest, ConcludeResponse } from './thresholds';
 import { AlertsHttpService } from './alerts-http.service';
 import { RedisPublisherService } from './redis-publisher.service';
 
@@ -14,54 +14,38 @@ export class AnalysisService {
 
   async analyze(measurement: Measurement): Promise<AnalysisResult> {
     const anomalies: string[] = [];
-    let level: AlertLevel = AlertLevel.NORMAL;
+    let level: AlertLevel = AlertLevel.NORMAL as AlertLevel;
 
-    // --- SpO2 checks ---
-    // For COPD-like patients whose stable SpO2 is below the standard 94% threshold,
-    // lower the warning boundary to Math.max(94, baseline - 4) to avoid false alerts.
-    const effectiveWarningThreshold = measurement.baselineSpO2
-      ? Math.max(94, measurement.baselineSpO2 - 4)
-      : THRESHOLDS.spo2.warning;
+    const markCritical = (msg: string) => {
+      anomalies.push(msg);
+      level = AlertLevel.CRITICAL;
+    };
 
     if (measurement.spo2 < THRESHOLDS.spo2.critical) {
-      anomalies.push(`SpO2 critically low: ${measurement.spo2}%`);
-      level = AlertLevel.CRITICAL;
-    } else if (measurement.spo2 < effectiveWarningThreshold) {
-      anomalies.push(`SpO2 below warning threshold: ${measurement.spo2}%`);
-      if ((level as AlertLevel) !== AlertLevel.CRITICAL) level = AlertLevel.WARNING;
-    } else if (measurement.spo2 > THRESHOLDS.spo2.hyperoxiaWarning) {
-      anomalies.push(`SpO2 elevated (hyperoxia): ${measurement.spo2}%`);
-      if ((level as AlertLevel) !== AlertLevel.CRITICAL) level = AlertLevel.WARNING;
-    } else if (
-      measurement.spo2 > THRESHOLDS.spo2.mildHyperoxiaWarning &&
-      measurement.baselineSpO2 !== undefined
-    ) {
-      anomalies.push(`SpO2 mildly elevated relative to patient baseline: ${measurement.spo2}%`);
-      if ((level as AlertLevel) !== AlertLevel.CRITICAL) level = AlertLevel.WARNING;
+      markCritical(`SpO2 critically low: ${measurement.spo2}%`);
     }
 
-    // --- Heart rate checks ---
     if (
       measurement.heartRate < THRESHOLDS.heartRate.criticalMin ||
       measurement.heartRate > THRESHOLDS.heartRate.criticalMax
     ) {
-      anomalies.push(`Heart rate critically abnormal: ${measurement.heartRate} bpm`);
-      level = AlertLevel.CRITICAL;
-    } else if (
-      measurement.heartRate < THRESHOLDS.heartRate.warningMin ||
-      measurement.heartRate > THRESHOLDS.heartRate.warningMax
-    ) {
-      anomalies.push(`Heart rate abnormal: ${measurement.heartRate} bpm`);
-      if ((level as AlertLevel) !== AlertLevel.CRITICAL) level = AlertLevel.WARNING;
+      markCritical(`Heart rate critically abnormal: ${measurement.heartRate} bpm`);
     }
 
-    // --- Respiratory rate checks ---
     if (
-      measurement.respiratoryRate < THRESHOLDS.respiratoryRate.min ||
-      measurement.respiratoryRate > THRESHOLDS.respiratoryRate.max
+      measurement.respiratoryRate < THRESHOLDS.respiratoryRate.criticalMin ||
+      measurement.respiratoryRate > THRESHOLDS.respiratoryRate.criticalMax
     ) {
-      anomalies.push(`Respiratory rate abnormal: ${measurement.respiratoryRate} breaths/min`);
-      if ((level as AlertLevel) !== AlertLevel.CRITICAL) level = AlertLevel.WARNING;
+      markCritical(`Respiratory rate critically abnormal: ${measurement.respiratoryRate} breaths/min`);
+    }
+
+    if (measurement.tidalVolume != null) {
+      if (
+        measurement.tidalVolume < THRESHOLDS.tidalVolume.criticalMin ||
+        measurement.tidalVolume > THRESHOLDS.tidalVolume.criticalMax
+      ) {
+        markCritical(`Tidal volume critically abnormal: ${measurement.tidalVolume} mL`);
+      }
     }
 
     const result: AnalysisResult = {
@@ -74,7 +58,7 @@ export class AnalysisService {
       measurement,
     };
 
-    if (level !== AlertLevel.NORMAL) {
+    if (level === AlertLevel.CRITICAL) {
       await this.sendAlert(result);
     }
 
@@ -86,6 +70,39 @@ export class AnalysisService {
     }));
 
     return result;
+  }
+
+  computeConclusion(req: ConcludeRequest): ConcludeResponse {
+    const { finalSpo2, finalHeartRate, finalRespiratoryRate, o2Percentage } = req;
+
+    const refHR = req.baselineHeartRate ?? req.firstHeartRate ?? finalHeartRate;
+    const refRR = req.baselineRespiratoryRate ?? req.firstRespiratoryRate ?? finalRespiratoryRate;
+    const hrChangePct = refHR > 0 ? Math.abs((finalHeartRate - refHR) / refHR) * 100 : 0;
+    const rrChangePct = refRR > 0 ? Math.abs((finalRespiratoryRate - refRR) / refRR) * 100 : 0;
+
+    let resistance: string;
+    if (finalSpo2 > 85) {
+      resistance = 'Hypoxia tolerance high';
+    } else if (finalSpo2 >= 80) {
+      resistance = 'Hypoxia tolerance normal';
+    } else if (finalSpo2 >= 75) {
+      const o2 = o2Percentage ?? 10;
+      if (o2 <= 10) resistance = 'Hypoxia tolerance moderately reduced';
+      else if (o2 <= 12) resistance = 'Hypoxia tolerance reduced';
+      else resistance = 'Hypoxia tolerance sharply reduced';
+    } else {
+      resistance = 'Hypoxia tolerance sharply reduced';
+    }
+
+    const hrElevated = hrChangePct > 30;
+    const rrElevated = rrChangePct > 30;
+    let reaction: string;
+    if (hrElevated && rrElevated) reaction = 'hemodynamic and respiratory reaction elevated';
+    else if (hrElevated) reaction = 'hemodynamic reaction elevated';
+    else if (rrElevated) reaction = 'respiratory reaction elevated';
+    else reaction = 'reaction normal';
+
+    return { conclusion: `${resistance}, ${reaction}` };
   }
 
   private async sendAlert(result: AnalysisResult): Promise<void> {
@@ -100,6 +117,7 @@ export class AnalysisService {
           spo2: result.measurement.spo2,
           heartRate: result.measurement.heartRate,
           respiratoryRate: result.measurement.respiratoryRate,
+          ...(result.measurement.tidalVolume != null && { tidalVolume: result.measurement.tidalVolume }),
         },
       });
     } catch (err) {

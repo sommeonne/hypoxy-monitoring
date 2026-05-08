@@ -1,65 +1,43 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Card, Button, Tag, Table, Typography, Row, Col, Descriptions, Spin, Input, Modal, Badge, message } from 'antd';
-import { DownloadOutlined, StopOutlined, SortAscendingOutlined, SortDescendingOutlined, FileTextOutlined, MailOutlined, DeleteOutlined } from '@ant-design/icons';
+import { Button, Table, Spin, Input, Modal, Badge, message } from 'antd';
+import {
+  DownloadOutlined,
+  StopOutlined,
+  SortAscendingOutlined,
+  SortDescendingOutlined,
+  FileTextOutlined,
+  MailOutlined,
+  DeleteOutlined,
+} from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSession, endSession, updateSessionNotes } from '../api/sessions';
+import { concludeSession } from '../api/analysis';
 import { fetchSessionMeasurements, Measurement } from '../api/measurements';
 import { fetchAlerts, Alert } from '../api/alerts';
 import { fetchPatient } from '../api/patients';
 import { useSocket } from '../hooks/useSocket';
 import MeasurementChart from '../components/MeasurementChart';
-import LatestVitals from '../components/LatestVitals';
 
-const { Text } = Typography;
+type AlertFilter = 'ALL' | 'CRITICAL';
 
-type AlertFilter = 'ALL' | 'CRITICAL' | 'WARNING';
+type ChartTabKey = 'spo2' | 'heartRate' | 'respRate' | 'o2' | 'tidalVolume';
 
-function computeConclusion(
-  displayData: Measurement[],
-  o2Pct: number | undefined,
-  patientBaselineHR?: number | null,
-  patientBaselineRR?: number | null,
-): string | undefined {
-  if (displayData.length < 1) return undefined;
-
-  const latest = displayData[0];
-  const first = displayData[displayData.length - 1];
-
-  const finalSpo2 = latest.spo2;
-  const refHR = patientBaselineHR ?? first.heartRate;
-  const refRR = patientBaselineRR ?? first.respiratoryRate;
-  const hrChangePct = refHR > 0
-    ? Math.abs((latest.heartRate - refHR) / refHR) * 100
-    : 0;
-  const rrChangePct = refRR > 0
-    ? Math.abs((latest.respiratoryRate - refRR) / refRR) * 100
-    : 0;
-
-  let resistance: string;
-  if (finalSpo2 > 85) {
-    resistance = 'Hypoxia tolerance high';
-  } else if (finalSpo2 >= 80) {
-    resistance = 'Hypoxia tolerance normal';
-  } else if (finalSpo2 >= 75) {
-    const o2 = o2Pct ?? 10;
-    if (o2 <= 10) resistance = 'Hypoxia tolerance moderately reduced';
-    else if (o2 <= 12) resistance = 'Hypoxia tolerance reduced';
-    else resistance = 'Hypoxia tolerance sharply reduced';
-  } else {
-    resistance = 'Hypoxia tolerance sharply reduced';
-  }
-
-  const hrElevated = hrChangePct > 30;
-  const rrElevated = rrChangePct > 30;
-  let reaction: string;
-  if (hrElevated && rrElevated) reaction = 'hemodynamic and respiratory reaction elevated';
-  else if (hrElevated) reaction = 'hemodynamic reaction elevated';
-  else if (rrElevated) reaction = 'respiratory reaction elevated';
-  else reaction = 'reaction normal';
-
-  return `${resistance}, ${reaction}`;
-}
+const CHART_TABS: {
+  key: ChartTabKey;
+  label: string;
+  metric: 'spo2' | 'heartRate' | 'respiratoryRate' | 'o2Percentage' | 'tidalVolume';
+  color: string;
+  unit: string;
+  name: string;
+  domain: [number, number];
+}[] = [
+  { key: 'spo2',       label: 'SpO₂',       metric: 'spo2',            color: '#1D9E75', unit: '%',   name: 'SpO₂', domain: [70, 100]  },
+  { key: 'heartRate',  label: 'Heart rate',  metric: 'heartRate',       color: '#E24B4A', unit: 'bpm', name: 'HR',   domain: [40, 180]  },
+  { key: 'respRate',   label: 'Resp. rate',  metric: 'respiratoryRate', color: '#7F77DD', unit: '/min',name: 'RR',   domain: [8, 40]    },
+  { key: 'o2',         label: 'O₂ conc.',    metric: 'o2Percentage',    color: '#3B82F6', unit: '%',   name: 'O₂',   domain: [9, 22]    },
+  { key: 'tidalVolume',label: 'Tidal vol.',  metric: 'tidalVolume',     color: '#F59E0B', unit: ' mL', name: 'TV',   domain: [200, 1000]},
+];
 
 
 function formatCountdown(seconds: number): string {
@@ -69,34 +47,115 @@ function formatCountdown(seconds: number): string {
   return `${seconds < 0 ? '-' : ''}${m}:${s}`;
 }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+function formatAlertValues(values: Record<string, number>): string {
+  const parts: string[] = [];
+  if (values.spo2 != null) parts.push(`SpO₂ ${values.spo2}%`);
+  if (values.heartRate != null) parts.push(`HR ${values.heartRate}`);
+  if (values.respiratoryRate != null) parts.push(`RR ${values.respiratoryRate}`);
+  if (values.o2Percentage != null) parts.push(`O₂ ${values.o2Percentage}%`);
+  return parts.join(' / ');
+}
+
+// ─── Tiny card shell ──────────────────────────────────────────────────────────
+
+function SCard({ title, children, titleRight }: { title: React.ReactNode; children: React.ReactNode; titleRight?: React.ReactNode }) {
   return (
-    <span style={{ fontSize: 15, fontWeight: 600, color: '#0F172A' }}>{children}</span>
+    <div
+      style={{
+        background: '#fff',
+        border: '1px solid #E2E8F0',
+        borderRadius: 12,
+        overflow: 'hidden',
+      }}
+    >
+      <div
+        style={{
+          padding: '9px 14px',
+          borderBottom: '1px solid #E2E8F0',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+        }}
+      >
+        <span style={{ fontSize: 11, fontWeight: 600, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          {title}
+        </span>
+        {titleRight}
+      </div>
+      {children}
+    </div>
   );
 }
+
+// ─── Sidebar meta row ─────────────────────────────────────────────────────────
+
+function MetaRow({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        padding: '5px 0',
+        borderBottom: '1px solid #F1F5F9',
+      }}
+    >
+      <span style={{ fontSize: 12, color: '#64748B' }}>{label}</span>
+      <span style={{ fontSize: 12, color: '#0F172A', fontWeight: 500 }}>{children}</span>
+    </div>
+  );
+}
+
+// ─── Sidebar vital row ────────────────────────────────────────────────────────
+
+function SideVital({ name, value, unit }: { name: string; value: React.ReactNode; unit: string }) {
+  return (
+    <div
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8,
+        padding: '7px 10px',
+        background: '#F8FAFC',
+        borderRadius: 8,
+      }}
+    >
+      <span style={{ fontSize: 11, color: '#64748B', width: 76, flexShrink: 0 }}>{name}</span>
+      <span style={{ fontSize: 15, fontWeight: 600, color: '#0F172A', flex: 1, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>
+        {value} <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 400 }}>{unit}</span>
+      </span>
+    </div>
+  );
+}
+
+// ─── Alert level tag ──────────────────────────────────────────────────────────
 
 function LevelTag({ level }: { level: string }) {
   const isC = level === 'CRITICAL';
   return (
-    <Tag
+    <span
       style={{
+        display: 'inline-block',
+        fontSize: 10,
+        fontWeight: 600,
+        padding: '2px 8px',
+        borderRadius: 4,
         background: isC ? '#FEF2F2' : '#FFFBEB',
         color: isC ? '#E24B4A' : '#EF9F27',
-        border: 'none',
-        borderRadius: 6,
-        fontWeight: 600,
-        fontSize: 11,
       }}
     >
-      {level}
-    </Tag>
+      {level.charAt(0) + level.slice(1).toLowerCase()}
+    </span>
   );
 }
+
+// ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const queryClient = useQueryClient();
   const { on } = useSocket();
+
   const [liveData, setLiveData] = useState<Measurement[]>([]);
   const [alertFilter, setAlertFilter] = useState<AlertFilter>('ALL');
   const [sortDesc, setSortDesc] = useState(true);
@@ -105,6 +164,7 @@ export default function SessionDetailPage() {
   const [hasDraft, setHasDraft] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
+  const [chartTab, setChartTab] = useState<ChartTabKey>('spo2');
   const autoEndedRef = useRef(false);
 
   const { data: session, isLoading } = useQuery({
@@ -170,21 +230,33 @@ export default function SessionDetailPage() {
   });
 
   const endMutation = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const data = liveData.length > 0 ? liveData : measurements;
-      const summary = data.length > 0
-        ? {
-            totalMeasurements: data.length,
-            alertCount: alerts.length,
-            avgSpo2: Math.round((data.reduce((s, m) => s + m.spo2, 0) / data.length) * 10) / 10,
-            avgHeartRate: Math.round((data.reduce((s, m) => s + m.heartRate, 0) / data.length) * 10) / 10,
-            avgRespiratoryRate: Math.round((data.reduce((s, m) => s + m.respiratoryRate, 0) / data.length) * 10) / 10,
-            minSpo2: Math.min(...data.map((m) => m.spo2)),
-            maxHeartRate: Math.max(...data.map((m) => m.heartRate)),
-            conclusion: computeConclusion(data, session?.o2Percentage, patient?.baselineHeartRate, patient?.baselineRespiratoryRate),
-          }
-        : { totalMeasurements: 0, alertCount: alerts.length };
-      return endSession(id!, summary);
+      if (data.length === 0) {
+        return endSession(id!, { totalMeasurements: 0, alertCount: alerts.length });
+      }
+      const latest = data[0];
+      const first = data[data.length - 1];
+      const { conclusion } = await concludeSession({
+        finalSpo2: latest.spo2,
+        finalHeartRate: latest.heartRate,
+        finalRespiratoryRate: latest.respiratoryRate,
+        o2Percentage: session?.o2Percentage,
+        firstHeartRate: first.heartRate,
+        firstRespiratoryRate: first.respiratoryRate,
+        baselineHeartRate: patient?.baselineHeartRate ?? undefined,
+        baselineRespiratoryRate: patient?.baselineRespiratoryRate ?? undefined,
+      });
+      return endSession(id!, {
+        totalMeasurements: data.length,
+        alertCount: alerts.length,
+        avgSpo2: Math.round((data.reduce((s, m) => s + m.spo2, 0) / data.length) * 10) / 10,
+        avgHeartRate: Math.round((data.reduce((s, m) => s + m.heartRate, 0) / data.length) * 10) / 10,
+        avgRespiratoryRate: Math.round((data.reduce((s, m) => s + m.respiratoryRate, 0) / data.length) * 10) / 10,
+        minSpo2: Math.min(...data.map((m) => m.spo2)),
+        maxHeartRate: Math.max(...data.map((m) => m.heartRate)),
+        conclusion,
+      });
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['session', id] }),
   });
@@ -197,9 +269,7 @@ export default function SessionDetailPage() {
 
   useEffect(() => {
     return on('alert:new', (a: Alert) => {
-      if (a.sessionId === id) {
-        queryClient.invalidateQueries({ queryKey: ['sessionAlerts', id] });
-      }
+      if (a.sessionId === id) queryClient.invalidateQueries({ queryKey: ['sessionAlerts', id] });
     });
   }, [on, id, queryClient]);
 
@@ -236,19 +306,17 @@ export default function SessionDetailPage() {
     }, 1000);
 
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id, session?.status, session?.plannedDurationSeconds, session?.startedAt]);
 
-  if (isLoading)
-    return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
-  if (!session)
-    return <div style={{ padding: 32, color: '#64748B' }}>Session not found</div>;
+  if (isLoading) return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
+  if (!session) return <div style={{ padding: 32, color: '#64748B' }}>Session not found</div>;
 
   const displayData = liveData.length > 0 ? liveData : measurements;
   const latest = displayData[0];
+  const isActive = session.status === 'active';
 
   const criticalCount = alerts.filter((a) => a.level === 'CRITICAL').length;
-  const warningCount = alerts.filter((a) => a.level === 'WARNING').length;
 
   const filteredAlerts = alerts
     .filter((a) => alertFilter === 'ALL' || a.level === alertFilter)
@@ -257,13 +325,9 @@ export default function SessionDetailPage() {
       return sortDesc ? diff : -diff;
     });
 
-  const alertFilterButtons: { key: AlertFilter; label: string; cls: string }[] = [
-    { key: 'ALL', label: `All (${alerts.length})`, cls: 'f-all' },
-    { key: 'CRITICAL', label: `Critical (${criticalCount})`, cls: 'f-critical' },
-    { key: 'WARNING', label: `Warning (${warningCount})`, cls: 'f-warning' },
-  ];
+  const activeTabCfg = CHART_TABS.find((t) => t.key === chartTab)!;
 
-  const isActive = session.status === 'active';
+  const conclusion = !isActive ? (session.conclusion ?? undefined) : undefined;
 
   async function sendReport(sessionId: string) {
     setSendingEmail(true);
@@ -300,27 +364,30 @@ export default function SessionDetailPage() {
     URL.revokeObjectURL(url);
   }
 
+  const statusStyle = isActive
+    ? { background: '#E1F5EE', color: '#1D9E75' }
+    : { background: '#F1F5F9', color: '#64748B' };
+
   return (
     <div>
-      {/* Page header */}
+      {/* ── Top bar ────────────────────────────────────────────── */}
       <div
         style={{
           display: 'flex',
+          alignItems: 'center',
           justifyContent: 'space-between',
-          alignItems: 'flex-start',
-          marginBottom: 24,
-          flexWrap: 'wrap',
+          marginBottom: 20,
           gap: 12,
+          flexWrap: 'wrap',
         }}
       >
-        <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: '0 0 4px' }}>
-            Session Details
-          </h1>
-          <Text style={{ color: '#64748B', fontSize: 13 }}>
-            ID: {id?.slice(0, 16)}…
-          </Text>
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+          <span style={{ fontSize: 18, fontWeight: 500, color: '#0F172A' }}>Session details</span>
+          <span style={{ fontSize: 11, color: '#94A3B8' }}>
+            {id?.slice(0, 14)}…
+          </span>
         </div>
+
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
           <Button
             icon={<DownloadOutlined />}
@@ -336,14 +403,6 @@ export default function SessionDetailPage() {
           >
             Excel
           </Button>
-          <Button
-            icon={<MailOutlined />}
-            loading={sendingEmail}
-            style={{ borderColor: '#E2E8F0', color: '#374151' }}
-            onClick={() => sendReport(id!)}
-          >
-            Send Report
-          </Button>
           <Badge dot={hasDraft} color="#EF9F27" offset={[-4, 4]}>
             <Button
               icon={<FileTextOutlined />}
@@ -353,6 +412,14 @@ export default function SessionDetailPage() {
               Note
             </Button>
           </Badge>
+          <Button
+            icon={<MailOutlined />}
+            loading={sendingEmail}
+            style={{ borderColor: '#E2E8F0', color: '#374151' }}
+            onClick={() => sendReport(id!)}
+          >
+            Send report
+          </Button>
           {isActive && (
             <Button
               icon={<StopOutlined />}
@@ -365,12 +432,277 @@ export default function SessionDetailPage() {
                 fontWeight: 600,
               }}
             >
-              End Session
+              End session
             </Button>
           )}
         </div>
       </div>
 
+      {/* ── Two-column layout ──────────────────────────────────── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '240px 1fr', gap: 14, alignItems: 'start' }}>
+
+        {/* ── Sidebar ───────────────────────────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {/* Session info */}
+          <SCard title="Session info">
+            <div style={{ padding: '10px 14px' }}>
+              <MetaRow label="Status">
+                <span style={{ fontSize: 10, fontWeight: 600, padding: '2px 7px', borderRadius: 4, ...statusStyle }}>
+                  {session.status.charAt(0).toUpperCase() + session.status.slice(1)}
+                </span>
+              </MetaRow>
+              <MetaRow label="Started">
+                {new Date(session.startedAt).toLocaleTimeString()}
+              </MetaRow>
+              {session.endedAt && (
+                <MetaRow label="Ended">
+                  {new Date(session.endedAt).toLocaleTimeString()}
+                </MetaRow>
+              )}
+              {session.plannedDurationSeconds != null && (
+                <MetaRow label="Planned">
+                  {formatCountdown(session.plannedDurationSeconds)}
+                </MetaRow>
+              )}
+              {isActive && remainingSeconds !== null && (
+                <MetaRow label="Remaining">
+                  <span
+                    style={{
+                      fontWeight: 700,
+                      fontVariantNumeric: 'tabular-nums',
+                      color:
+                        remainingSeconds <= 0
+                          ? '#E24B4A'
+                          : remainingSeconds <= 30
+                          ? '#E24B4A'
+                          : remainingSeconds <= 60
+                          ? '#EF9F27'
+                          : '#1D9E75',
+                    }}
+                  >
+                    {remainingSeconds <= 0
+                      ? `Overtime ${formatCountdown(remainingSeconds)}`
+                      : formatCountdown(remainingSeconds)}
+                  </span>
+                </MetaRow>
+              )}
+              {session.endedAt && (
+                <MetaRow label="Duration">
+                  {formatCountdown(
+                    Math.floor(
+                      (new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime()) / 1000,
+                    ),
+                  )}
+                </MetaRow>
+              )}
+              <MetaRow label="Measurements">
+                {session.summary?.totalMeasurements ?? displayData.length}
+              </MetaRow>
+              <MetaRow label="Alerts">
+                <span style={{ color: alerts.length > 0 ? '#E24B4A' : '#0F172A', fontWeight: 600 }}>
+                  {alerts.length}
+                </span>
+              </MetaRow>
+            </div>
+          </SCard>
+
+          {/* Latest vitals */}
+          {latest && (
+            <SCard title="Latest vitals">
+              <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+                <SideVital name="SpO₂"       value={latest.spo2}               unit="%" />
+                <SideVital name="Tidal vol." value={latest.tidalVolume ?? '—'}  unit="mL" />
+                <SideVital name="Heart rate" value={latest.heartRate}            unit="bpm" />
+                <SideVital name="Resp. rate" value={latest.respiratoryRate}      unit="/min" />
+                {latest.o2Percentage != null && (
+                  <SideVital name="O₂ conc." value={latest.o2Percentage} unit="%" />
+                )}
+              </div>
+            </SCard>
+          )}
+
+          {/* Conclusion */}
+          <SCard title="Conclusion">
+            <div style={{ padding: '12px 14px' }}>
+              {conclusion ? (
+                <p style={{ fontSize: 13, color: '#64748B', lineHeight: 1.6 }}>{conclusion}</p>
+              ) : (
+                <p style={{ fontSize: 13, color: '#CBD5E1', lineHeight: 1.6, fontStyle: 'italic' }}>
+                  Available after session ends
+                </p>
+              )}
+            </div>
+          </SCard>
+        </div>
+
+        {/* ── Main ──────────────────────────────────────────────── */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+
+          {/* Tabbed chart */}
+          <SCard
+            title="Vitals over time"
+            titleRight={
+              <div style={{ display: 'flex', gap: 4 }}>
+                {CHART_TABS.map((tab) => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setChartTab(tab.key)}
+                    style={{
+                      fontSize: 11,
+                      padding: '3px 9px',
+                      borderRadius: 4,
+                      border: '1px solid',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      transition: 'all 0.12s',
+                      borderColor: chartTab === tab.key ? '#CBD5E1' : '#E2E8F0',
+                      background: chartTab === tab.key ? '#F1F5F9' : 'transparent',
+                      color: chartTab === tab.key ? '#0F172A' : '#64748B',
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            }
+          >
+            <div style={{ padding: '12px 14px 8px' }}>
+              {displayData.length === 0 ? (
+                <div style={{ height: 220, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#94A3B8', fontSize: 13 }}>
+                  No measurements yet
+                </div>
+              ) : (
+                <MeasurementChart
+                  measurements={displayData}
+                  metric={activeTabCfg.metric}
+                  color={activeTabCfg.color}
+                  name={activeTabCfg.name}
+                  unit={activeTabCfg.unit}
+                  domain={activeTabCfg.domain}
+                  height={220}
+                  {...(activeTabCfg.key === 'o2' && session.o2Percentage
+                    ? {
+                        referenceValue: session.o2Percentage,
+                        referenceLabel: `Set: ${session.o2Percentage}%`,
+                        referenceColor: '#F59E0B',
+                      }
+                    : {})}
+                />
+              )}
+            </div>
+          </SCard>
+
+          {/* Alerts */}
+          <SCard
+            title={
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span>Alerts</span>
+                <span
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 600,
+                    padding: '2px 8px',
+                    borderRadius: 4,
+                    background: alerts.length > 0 ? '#FFFBEB' : '#F1F5F9',
+                    color: alerts.length > 0 ? '#EF9F27' : '#64748B',
+                  }}
+                >
+                  {alerts.length}
+                </span>
+              </div>
+            }
+            titleRight={
+              <div style={{ display: 'flex', gap: 4 }}>
+                {(
+                  [
+                    { key: 'ALL' as AlertFilter, label: `All (${alerts.length})` },
+                    { key: 'CRITICAL' as AlertFilter, label: `Critical (${criticalCount})` },
+                  ] as const
+                ).map(({ key, label }) => (
+                  <button
+                    key={key}
+                    onClick={() => setAlertFilter(key)}
+                    style={{
+                      fontSize: 11,
+                      padding: '3px 9px',
+                      borderRadius: 4,
+                      border: '1px solid',
+                      cursor: 'pointer',
+                      fontFamily: 'inherit',
+                      transition: 'all 0.12s',
+                      borderColor: alertFilter === key ? '#CBD5E1' : '#E2E8F0',
+                      background: alertFilter === key ? '#F1F5F9' : 'transparent',
+                      color: alertFilter === key ? '#0F172A' : '#64748B',
+                    }}
+                  >
+                    {label}
+                  </button>
+                ))}
+                <button
+                  onClick={() => setSortDesc((v) => !v)}
+                  style={{
+                    fontSize: 11,
+                    padding: '3px 9px',
+                    borderRadius: 4,
+                    border: '1px solid #E2E8F0',
+                    cursor: 'pointer',
+                    fontFamily: 'inherit',
+                    background: 'transparent',
+                    color: '#64748B',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 4,
+                  }}
+                  title={sortDesc ? 'Newest first' : 'Oldest first'}
+                >
+                  {sortDesc ? <SortDescendingOutlined /> : <SortAscendingOutlined />}
+                  {sortDesc ? 'Newest' : 'Oldest'}
+                </button>
+              </div>
+            }
+          >
+            <Table
+              dataSource={filteredAlerts}
+              rowKey="id"
+              size="small"
+              pagination={{ pageSize: 10 }}
+              className="teal-table"
+              style={{ margin: 0 }}
+              columns={[
+                {
+                  title: <span className="label-caps">Time</span>,
+                  dataIndex: 'createdAt',
+                  width: 80,
+                  render: (d: string) => (
+                    <span style={{ fontSize: 11, color: '#94A3B8', whiteSpace: 'nowrap' }}>
+                      {new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </span>
+                  ),
+                },
+                {
+                  title: <span className="label-caps">Level</span>,
+                  dataIndex: 'level',
+                  width: 100,
+                  render: (_: string, record: Alert) => <LevelTag level={record.level} />,
+                },
+                {
+                  title: <span className="label-caps">Triggered vitals</span>,
+                  dataIndex: 'values',
+                  width: 160,
+                  render: (values: Record<string, number>) => (
+                    <span style={{ fontSize: 11, color: '#64748B', whiteSpace: 'nowrap' }}>
+                      {values ? formatAlertValues(values) : '—'}
+                    </span>
+                  ),
+                },
+              ]}
+            />
+          </SCard>
+        </div>
+      </div>
+
+      {/* ── Note modal ─────────────────────────────────────────── */}
       <Modal
         title={
           <span style={{ fontWeight: 700, fontSize: 16, color: '#0F172A' }}>
@@ -426,281 +758,6 @@ export default function SessionDetailPage() {
           style={{ fontSize: 14, color: '#0F172A', resize: 'none', marginTop: 8 }}
         />
       </Modal>
-
-      {/* Session info + latest vitals */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={10}>
-          <Card
-            title={<SectionTitle>Session Info</SectionTitle>}
-            style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none', height: '100%' }}
-            styles={{ body: { padding: 20 } }}
-          >
-            <Descriptions column={1} size="small" labelStyle={{ color: '#64748B', fontSize: 12 }}>
-              <Descriptions.Item label="Status">
-                <Tag
-                  style={{
-                    background: isActive ? '#E1F5EE' : '#F1F5F9',
-                    color: isActive ? '#1D9E75' : '#64748B',
-                    border: 'none',
-                    borderRadius: 6,
-                    fontWeight: 600,
-                    fontSize: 11,
-                  }}
-                >
-                  {session.status.toUpperCase()}
-                </Tag>
-              </Descriptions.Item>
-              <Descriptions.Item label="Started">
-                {new Date(session.startedAt).toLocaleString()}
-              </Descriptions.Item>
-              {session.endedAt && (
-                <Descriptions.Item label="Ended">
-                  {new Date(session.endedAt).toLocaleString()}
-                </Descriptions.Item>
-              )}
-              {session.plannedDurationSeconds != null && (
-                <Descriptions.Item label="Planned Duration">
-                  {formatCountdown(session.plannedDurationSeconds)}
-                </Descriptions.Item>
-              )}
-              {isActive && remainingSeconds !== null && (
-                <Descriptions.Item label="Time Remaining">
-                  <span
-                    style={{
-                      fontWeight: 700,
-                      fontVariantNumeric: 'tabular-nums',
-                      color:
-                        remainingSeconds <= 0
-                          ? '#E24B4A'
-                          : remainingSeconds <= 30
-                          ? '#E24B4A'
-                          : remainingSeconds <= 60
-                          ? '#EF9F27'
-                          : '#1D9E75',
-                    }}
-                  >
-                    {remainingSeconds <= 0
-                      ? `Overtime ${formatCountdown(remainingSeconds)}`
-                      : formatCountdown(remainingSeconds)}
-                  </span>
-                </Descriptions.Item>
-              )}
-              {session.summary && (
-                <>
-                  <Descriptions.Item label="Duration">
-                    {session.endedAt
-                      ? formatCountdown(Math.floor((new Date(session.endedAt).getTime() - new Date(session.startedAt).getTime()) / 1000))
-                      : `${session.summary.durationMinutes} min`}
-                  </Descriptions.Item>
-                  <Descriptions.Item label="Measurements">{session.summary.totalMeasurements}</Descriptions.Item>
-                  <Descriptions.Item label="Alerts">{alerts.length}</Descriptions.Item>
-                  {session.conclusion && (
-                    <Descriptions.Item label="Conclusion">
-                      <span style={{ fontWeight: 600, color: '#0F172A' }}>{session.conclusion}</span>
-                    </Descriptions.Item>
-                  )}
-                </>
-              )}
-            </Descriptions>
-          </Card>
-        </Col>
-
-        {latest && (
-          <Col xs={24} md={14}>
-            <Card
-              title={<SectionTitle>Latest Vitals</SectionTitle>}
-              style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none', minHeight: '100%' }}
-              styles={{ body: { padding: 20 } }}
-            >
-              <LatestVitals
-                vitals={{
-                  spo2:        latest.spo2,
-                  heartRate:   latest.heartRate,
-                  respRate:    latest.respiratoryRate,
-                  o2:          latest.o2Percentage,
-                  tidalVolume: latest.tidalVolume,
-                  updatedAt:   latest.createdAt,
-                  trends: (() => {
-                    const win = [...displayData].slice(0, 20).reverse();
-                    return {
-                      spo2:      win.map(m => m.spo2),
-                      heartRate: win.map(m => m.heartRate),
-                      respRate:  win.map(m => m.respiratoryRate),
-                      o2:        win.some(m => m.o2Percentage != null)
-                                   ? win.map(m => m.o2Percentage ?? 0)
-                                   : undefined,
-                    };
-                  })(),
-                }}
-              />
-            </Card>
-          </Col>
-        )}
-      </Row>
-
-      {/* 4 metric charts */}
-      <Row gutter={[16, 16]} style={{ marginBottom: 16 }}>
-        <Col xs={24} md={12}>
-          <Card
-            title={<SectionTitle>SpO₂ (%)</SectionTitle>}
-            style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
-            styles={{ body: { padding: '8px 16px 16px' } }}
-          >
-            <MeasurementChart
-              measurements={displayData}
-              metric="spo2"
-              color="#1D9E75"
-              name="SpO₂"
-              unit="%"
-              domain={[70, 100]}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={12}>
-          <Card
-            title={<SectionTitle>Heart Rate (bpm)</SectionTitle>}
-            style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
-            styles={{ body: { padding: '8px 16px 16px' } }}
-          >
-            <MeasurementChart
-              measurements={displayData}
-              metric="heartRate"
-              color="#E24B4A"
-              name="HR"
-              unit=""
-              domain={[40, 180]}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={12}>
-          <Card
-            title={<SectionTitle>Respiratory Rate (/min)</SectionTitle>}
-            style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
-            styles={{ body: { padding: '8px 16px 16px' } }}
-          >
-            <MeasurementChart
-              measurements={displayData}
-              metric="respiratoryRate"
-              color="#7F77DD"
-              name="RR"
-              unit=""
-              domain={[8, 40]}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={12}>
-          <Card
-            title={<SectionTitle>O₂ Concentration (%)</SectionTitle>}
-            style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
-            styles={{ body: { padding: '8px 16px 16px' } }}
-          >
-            <MeasurementChart
-              measurements={displayData}
-              metric="o2Percentage"
-              color="#3B82F6"
-              name="O₂"
-              unit="%"
-              domain={[9, 22]}
-              referenceValue={session.o2Percentage}
-              referenceLabel={session.o2Percentage ? `Set: ${session.o2Percentage}%` : undefined}
-              referenceColor="#F59E0B"
-            />
-          </Card>
-        </Col>
-        <Col xs={24} md={12}>
-          <Card
-            title={<SectionTitle>Tidal Volume (mL)</SectionTitle>}
-            style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
-            styles={{ body: { padding: '8px 16px 16px' } }}
-          >
-            <MeasurementChart
-              measurements={displayData}
-              metric="tidalVolume"
-              color="#F59E0B"
-              name="TV"
-              unit=" mL"
-              domain={[200, 1000]}
-            />
-          </Card>
-        </Col>
-      </Row>
-
-      {/* Alerts table */}
-      <Card
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <SectionTitle>Alerts</SectionTitle>
-              <span
-                style={{
-                  background: alerts.length > 0 ? '#FEF2F2' : '#F1F5F9',
-                  color: alerts.length > 0 ? '#E24B4A' : '#64748B',
-                  borderRadius: 20,
-                  padding: '1px 10px',
-                  fontSize: 12,
-                  fontWeight: 600,
-                }}
-              >
-                {alerts.length}
-              </span>
-            </div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {alertFilterButtons.map(({ key, label, cls }) => (
-                <button
-                  key={key}
-                  className={`filter-btn ${alertFilter === key ? cls : ''}`}
-                  onClick={() => setAlertFilter(key)}
-                >
-                  {label}
-                </button>
-              ))}
-              <button
-                className="filter-btn"
-                onClick={() => setSortDesc((v) => !v)}
-                title={sortDesc ? 'Newest first' : 'Oldest first'}
-                style={{ display: 'flex', alignItems: 'center', gap: 4 }}
-              >
-                {sortDesc ? <SortDescendingOutlined /> : <SortAscendingOutlined />}
-                {sortDesc ? 'Newest' : 'Oldest'}
-              </button>
-            </div>
-          </div>
-        }
-        style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
-        styles={{ body: { padding: 20 } }}
-      >
-        <Table
-          dataSource={filteredAlerts}
-          rowKey="id"
-          size="small"
-          pagination={{ pageSize: 10 }}
-          className="teal-table"
-          columns={[
-            {
-              title: <span className="label-caps">Level</span>,
-              dataIndex: 'level',
-              width: 130,
-              render: (l: string) => <LevelTag level={l} />,
-            },
-            {
-              title: <span className="label-caps">Message</span>,
-              dataIndex: 'message',
-              ellipsis: true,
-            },
-            {
-              title: <span className="label-caps">Time</span>,
-              dataIndex: 'createdAt',
-              width: 160,
-              render: (d: string) => (
-                <span style={{ color: '#64748B', fontSize: 12 }}>
-                  {new Date(d).toLocaleString()}
-                </span>
-              ),
-            },
-          ]}
-        />
-      </Card>
-
     </div>
   );
 }
