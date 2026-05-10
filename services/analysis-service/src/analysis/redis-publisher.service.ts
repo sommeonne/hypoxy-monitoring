@@ -21,6 +21,12 @@ export class RedisPublisherService implements OnModuleInit, OnModuleDestroy {
     await this.client.publish(channel, message);
   }
 
+  async xadd(stream: string, data: Record<string, string>): Promise<void> {
+    const fields: string[] = [];
+    for (const [k, v] of Object.entries(data)) fields.push(k, v);
+    await this.client.xadd(stream, '*', ...fields);
+  }
+
   async onModuleDestroy() {
     await this.client.quit();
   }

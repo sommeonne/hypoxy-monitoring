@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, ParseUUIDPipe, HttpCode, Res } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, ParseUUIDPipe, HttpCode, Res, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
 import { MeasurementsService } from './measurements.service';
@@ -30,18 +30,24 @@ export class MeasurementsController {
   @Get('measurements/:sessionId')
   @ApiOperation({ summary: 'Get all measurements for a session' })
   @ApiResponse({ status: 200, type: [Measurement] })
-  findBySession(
+  async findBySession(
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
+    @Headers('x-user-id') doctorId: string,
+    @Headers('x-user-role') role: string,
   ): Promise<Measurement[]> {
+    await this.measurementsService.verifySessionAccess(sessionId, doctorId, role);
     return this.measurementsService.findBySession(sessionId);
   }
 
   @Get('latest/:patientId')
   @ApiOperation({ summary: 'Get latest measurement for a patient' })
   @ApiResponse({ status: 200, type: Measurement })
-  findLatest(
+  async findLatest(
     @Param('patientId', ParseUUIDPipe) patientId: string,
+    @Headers('x-user-id') doctorId: string,
+    @Headers('x-user-role') role: string,
   ): Promise<Measurement | null> {
+    await this.measurementsService.verifyPatientAccess(patientId, doctorId, role);
     return this.measurementsService.findLatestByPatient(patientId);
   }
 }

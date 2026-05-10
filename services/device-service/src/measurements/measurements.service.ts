@@ -1,8 +1,9 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { ConfigService } from '@nestjs/config';
 import { Measurement } from './measurement.entity';
 import { CreateMeasurementDto } from './dto/create-measurement.dto';
 import { RedisPublisherService } from '../redis/redis-publisher.service';
@@ -21,6 +22,7 @@ export class MeasurementsService {
     @Inject(CACHE_MANAGER)
     private readonly cache: Cache,
     private readonly redisPublisher: RedisPublisherService,
+    private readonly config: ConfigService,
   ) {}
 
   async create(dto: CreateMeasurementDto): Promise<Measurement | null> {
@@ -64,6 +66,22 @@ export class MeasurementsService {
       await this.cache.set(`latest:${patientId}`, measurement, 300_000);
     }
     return measurement;
+  }
+
+  async verifySessionAccess(sessionId: string, doctorId: string, role: string): Promise<void> {
+    const base = this.config.get('SESSION_SERVICE_URL', 'http://session-service:3005');
+    const res = await fetch(`${base}/sessions/${sessionId}`, {
+      headers: { 'x-user-id': doctorId, 'x-user-role': role },
+    });
+    if (!res.ok) throw new ForbiddenException('Access denied');
+  }
+
+  async verifyPatientAccess(patientId: string, doctorId: string, role: string): Promise<void> {
+    const base = this.config.get('PATIENT_SERVICE_URL', 'http://patient-service:3002');
+    const res = await fetch(`${base}/patients/${patientId}`, {
+      headers: { 'x-user-id': doctorId, 'x-user-role': role },
+    });
+    if (!res.ok) throw new ForbiddenException('Access denied');
   }
 
   private async resolveCurrentSession(): Promise<ActiveSession | null> {

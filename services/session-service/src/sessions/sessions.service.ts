@@ -41,14 +41,21 @@ export class SessionsService {
     const durationMinutes = Math.round(durationMs / 60000);
 
     const summary: SessionSummary = {
-      avgSpo2: dto.avgSpo2 ?? 0,
-      avgHeartRate: dto.avgHeartRate ?? 0,
-      avgRespiratoryRate: dto.avgRespiratoryRate ?? 0,
-      minSpo2: dto.minSpo2 ?? 0,
-      maxHeartRate: dto.maxHeartRate ?? 0,
       durationMinutes,
       totalMeasurements: dto.totalMeasurements ?? 0,
       alertCount: dto.alertCount ?? 0,
+      avgSpo2: dto.avgSpo2 ?? 0,
+      minSpo2: dto.minSpo2 ?? 0,
+      maxSpo2: dto.maxSpo2 ?? 0,
+      avgHeartRate: dto.avgHeartRate ?? 0,
+      minHeartRate: dto.minHeartRate ?? 0,
+      maxHeartRate: dto.maxHeartRate ?? 0,
+      avgRespiratoryRate: dto.avgRespiratoryRate ?? 0,
+      minRespiratoryRate: dto.minRespiratoryRate ?? 0,
+      maxRespiratoryRate: dto.maxRespiratoryRate ?? 0,
+      avgTidalVolume: dto.avgTidalVolume ?? 0,
+      minTidalVolume: dto.minTidalVolume ?? 0,
+      maxTidalVolume: dto.maxTidalVolume ?? 0,
     };
 
     Object.assign(session, {

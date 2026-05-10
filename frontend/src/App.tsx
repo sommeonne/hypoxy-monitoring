@@ -44,8 +44,8 @@ export default function App() {
               <Content>
                 <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 40px', width: '100%' }}>
                   <Routes>
-                    <Route path="/" element={<Navigate to={isAdmin() ? '/users' : '/dashboard'} replace />} />
-                    <Route path="/dashboard" element={<DoctorRoute><DashboardPage /></DoctorRoute>} />
+                    <Route path="/" element={<Navigate to={isAdmin() ? '/users' : '/patients'} replace />} />
+                    {/*<Route path="/dashboard" element={<DoctorRoute><DashboardPage /></DoctorRoute>} />*/}
                     <Route path="/patients" element={<DoctorRoute><PatientsPage /></DoctorRoute>} />
                     <Route path="/patients/:id" element={<DoctorRoute><PatientDetailPage /></DoctorRoute>} />
                     <Route path="/sessions/:id" element={<DoctorRoute><SessionDetailPage /></DoctorRoute>} />

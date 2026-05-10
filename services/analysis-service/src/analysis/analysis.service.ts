@@ -114,17 +114,17 @@ export class AnalysisService {
   }
 
   private async sendAlert(result: AnalysisResult): Promise<void> {
-    await this.redisPublisher.publish('critical', JSON.stringify({
+    await this.redisPublisher.xadd('critical-alerts', {
       patientId: result.measurement.patientId,
       sessionId: result.measurement.sessionId,
       measurementId: result.measurement.id,
       level: result.level,
-      values: {
+      values: JSON.stringify({
         spo2: result.measurement.spo2,
         heartRate: result.measurement.heartRate,
         respiratoryRate: result.measurement.respiratoryRate,
         ...(result.measurement.tidalVolume != null && { tidalVolume: result.measurement.tidalVolume }),
-      },
-    }));
+      }),
+    });
   }
 }

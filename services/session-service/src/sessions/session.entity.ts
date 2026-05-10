@@ -10,14 +10,25 @@ export enum SessionStatus {
 }
 
 export interface SessionSummary {
-  avgSpo2: number;
-  avgHeartRate: number;
-  avgRespiratoryRate: number;
-  minSpo2: number;
-  maxHeartRate: number;
   durationMinutes: number;
   totalMeasurements: number;
   alertCount: number;
+  // SpO2
+  avgSpo2: number;
+  minSpo2: number;
+  maxSpo2: number;
+  // Heart Rate
+  avgHeartRate: number;
+  minHeartRate: number;
+  maxHeartRate: number;
+  // Respiratory Rate
+  avgRespiratoryRate: number;
+  minRespiratoryRate: number;
+  maxRespiratoryRate: number;
+  // Tidal Volume
+  avgTidalVolume: number;
+  minTidalVolume: number;
+  maxTidalVolume: number;
 }
 
 @Entity('sessions')

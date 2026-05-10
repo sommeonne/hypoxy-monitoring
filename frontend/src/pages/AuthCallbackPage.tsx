@@ -21,7 +21,7 @@ export default function AuthCallbackPage() {
     exchangeCode(code)
       .then(({ access_token }) => {
         localStorage.setItem('access_token', access_token);
-        navigate(isAdmin() ? '/users' : '/dashboard', { replace: true });
+        navigate(isAdmin() ? '/users' : '/patients', { replace: true });
       })
       .catch(() => navigate('/login', { replace: true }));
   }, [navigate]);

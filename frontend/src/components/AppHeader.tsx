@@ -15,7 +15,6 @@ import { fetchPatients } from '../api/patients';
 
 const { Header } = Layout;
 
-/* Teal pulse/heart SVG logo icon */
 function HeartPulseIcon() {
   return (
     <svg
@@ -96,7 +95,6 @@ export default function AppHeader() {
           borderBottom: '1px solid rgba(255,255,255,0.06)',
         }}
       >
-        {/* Logo — left */}
         <div
           style={{
             display: 'flex',
@@ -122,7 +120,6 @@ export default function AppHeader() {
           </span>
         </div>
 
-        {/* Nav — center */}
         <Menu
           theme="dark"
           mode="horizontal"
@@ -139,7 +136,6 @@ export default function AppHeader() {
           }}
         />
 
-        {/* Right controls */}
         <div
           style={{
             display: 'flex',

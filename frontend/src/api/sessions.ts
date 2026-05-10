@@ -1,14 +1,21 @@
 import { api } from './client';
 
 export interface SessionSummary {
-  avgSpo2: number;
-  avgHeartRate: number;
-  avgRespiratoryRate: number;
-  minSpo2: number;
-  maxHeartRate: number;
   durationMinutes: number;
   totalMeasurements: number;
   alertCount: number;
+  avgSpo2: number;
+  minSpo2: number;
+  maxSpo2: number;
+  avgHeartRate: number;
+  minHeartRate: number;
+  maxHeartRate: number;
+  avgRespiratoryRate: number;
+  minRespiratoryRate: number;
+  maxRespiratoryRate: number;
+  avgTidalVolume: number;
+  minTidalVolume: number;
+  maxTidalVolume: number;
 }
 
 export interface Session {

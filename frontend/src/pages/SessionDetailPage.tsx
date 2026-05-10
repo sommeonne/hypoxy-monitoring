@@ -20,7 +20,15 @@ import { useSocket } from '../hooks/useSocket';
 import MeasurementChart from '../components/MeasurementChart';
 import AlertsTable from '../components/AlertsTable';
 
-type AlertFilter = 'ALL' | 'CRITICAL';
+
+// ─── Stat helpers ─────────────────────────────────────────────────────────────
+
+function avg(data: Measurement[], fn: (m: Measurement) => number): number {
+  return data.reduce((s, m) => s + fn(m), 0) / data.length;
+}
+function r(n: number): number {
+  return Math.round(n * 10) / 10;
+}
 
 type ChartTabKey = 'spo2' | 'heartRate' | 'respRate' | 'o2' | 'tidalVolume';
 
@@ -128,7 +136,6 @@ export default function SessionDetailPage() {
   const { on, joinSession, leaveSession } = useSocket();
 
   const [liveData, setLiveData] = useState<Measurement[]>([]);
-  const [alertFilter, setAlertFilter] = useState<AlertFilter>('ALL');
   const [sortDesc, setSortDesc] = useState(true);
   const [noteText, setNoteText] = useState('');
   const [noteModalOpen, setNoteModalOpen] = useState(false);
@@ -216,7 +223,6 @@ export default function SessionDetailPage() {
         o2Percentage: session?.o2Percentage,
         firstHeartRate: first.heartRate,
         firstRespiratoryRate: first.respiratoryRate,
-
         baselineHeartRate: patient?.baselineHeartRate ?? undefined,
         baselineRespiratoryRate: patient?.baselineRespiratoryRate ?? undefined,
         baselineTidalVolume: patient?.baselineTidalVolume ?? undefined,
@@ -224,11 +230,18 @@ export default function SessionDetailPage() {
       return endSession(id!, {
         totalMeasurements: data.length,
         alertCount: alerts.length,
-        avgSpo2: Math.round((data.reduce((s, m) => s + m.spo2, 0) / data.length) * 10) / 10,
-        avgHeartRate: Math.round((data.reduce((s, m) => s + m.heartRate, 0) / data.length) * 10) / 10,
-        avgRespiratoryRate: Math.round((data.reduce((s, m) => s + m.respiratoryRate, 0) / data.length) * 10) / 10,
+        avgSpo2: r(avg(data, (m) => m.spo2)),
         minSpo2: Math.min(...data.map((m) => m.spo2)),
+        maxSpo2: Math.max(...data.map((m) => m.spo2)),
+        avgHeartRate: r(avg(data, (m) => m.heartRate)),
+        minHeartRate: Math.min(...data.map((m) => m.heartRate)),
         maxHeartRate: Math.max(...data.map((m) => m.heartRate)),
+        avgRespiratoryRate: r(avg(data, (m) => m.respiratoryRate)),
+        minRespiratoryRate: Math.min(...data.map((m) => m.respiratoryRate)),
+        maxRespiratoryRate: Math.max(...data.map((m) => m.respiratoryRate)),
+        avgTidalVolume: r(avg(data, (m) => m.tidalVolume ?? 0)),
+        minTidalVolume: Math.min(...data.map((m) => m.tidalVolume ?? 0)),
+        maxTidalVolume: Math.max(...data.map((m) => m.tidalVolume ?? 0)),
         conclusion,
       });
     },
@@ -299,14 +312,10 @@ export default function SessionDetailPage() {
   const latest = displayData[0];
   const isActive = session.status === 'active';
 
-  const criticalCount = alerts.filter((a) => a.level === 'CRITICAL').length;
-
-  const filteredAlerts = alerts
-    .filter((a) => alertFilter === 'ALL' || a.level === alertFilter)
-    .sort((a, b) => {
-      const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-      return sortDesc ? diff : -diff;
-    });
+  const filteredAlerts = [...alerts].sort((a, b) => {
+    const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    return sortDesc ? diff : -diff;
+  });
 
   const activeTabCfg = CHART_TABS.find((t) => t.key === chartTab)!;
 
@@ -596,53 +605,26 @@ export default function SessionDetailPage() {
               </div>
             }
             titleRight={
-              <div style={{ display: 'flex', gap: 4 }}>
-                {(
-                  [
-                    { key: 'ALL' as AlertFilter, label: `All (${alerts.length})` },
-                    { key: 'CRITICAL' as AlertFilter, label: `Critical (${criticalCount})` },
-                  ] as const
-                ).map(({ key, label }) => (
-                  <button
-                    key={key}
-                    onClick={() => setAlertFilter(key)}
-                    style={{
-                      fontSize: 11,
-                      padding: '3px 9px',
-                      borderRadius: 4,
-                      border: '1px solid',
-                      cursor: 'pointer',
-                      fontFamily: 'inherit',
-                      transition: 'all 0.12s',
-                      borderColor: alertFilter === key ? '#CBD5E1' : '#E2E8F0',
-                      background: alertFilter === key ? '#F1F5F9' : 'transparent',
-                      color: alertFilter === key ? '#0F172A' : '#64748B',
-                    }}
-                  >
-                    {label}
-                  </button>
-                ))}
-                <button
-                  onClick={() => setSortDesc((v) => !v)}
-                  style={{
-                    fontSize: 11,
-                    padding: '3px 9px',
-                    borderRadius: 4,
-                    border: '1px solid #E2E8F0',
-                    cursor: 'pointer',
-                    fontFamily: 'inherit',
-                    background: 'transparent',
-                    color: '#64748B',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 4,
-                  }}
-                  title={sortDesc ? 'Newest first' : 'Oldest first'}
-                >
-                  {sortDesc ? <SortDescendingOutlined /> : <SortAscendingOutlined />}
-                  {sortDesc ? 'Newest' : 'Oldest'}
-                </button>
-              </div>
+              <button
+                onClick={() => setSortDesc((v) => !v)}
+                style={{
+                  fontSize: 11,
+                  padding: '3px 9px',
+                  borderRadius: 4,
+                  border: '1px solid #E2E8F0',
+                  cursor: 'pointer',
+                  fontFamily: 'inherit',
+                  background: 'transparent',
+                  color: '#64748B',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 4,
+                }}
+                title={sortDesc ? 'Newest first' : 'Oldest first'}
+              >
+                {sortDesc ? <SortDescendingOutlined /> : <SortAscendingOutlined />}
+                {sortDesc ? 'Newest' : 'Oldest'}
+              </button>
             }
           >
             <AlertsTable alerts={filteredAlerts} />
