@@ -15,7 +15,7 @@ interface Props {
   address: string;
   baselineHeartRate: number | null;
   baselineRespiratoryRate: number | null;
-  tidalVolume: number | null;
+  baselineTidalVolume: number | null;
 }
 
 interface FieldProps {
@@ -78,7 +78,7 @@ export default function PatientInfoCard({
   address,
   baselineHeartRate,
   baselineRespiratoryRate,
-  tidalVolume,
+  baselineTidalVolume,
 }: Props) {
   const dob = dateOfBirth ? new Date(dateOfBirth).toLocaleDateString() : null;
 
@@ -91,7 +91,6 @@ export default function PatientInfoCard({
         overflow: 'hidden',
       }}
     >
-      {/* Header */}
       <div
         style={{
           display: 'flex',
@@ -112,30 +111,24 @@ export default function PatientInfoCard({
         </span>
       </div>
 
-      {/* Grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
 
-        {/* Row 1 */}
         <Field label="Last Name"   value={lastName} />
         <Field label="First Name"  value={firstName} />
         <Field label="Patronymic"  value={patronymic} />
 
-        {/* Row 2 */}
         <Field label="Date of Birth" value={dob} />
         <Field label="Gender"        value={gender} />
         <Field label="Group"         value={group != null ? String(group) : null} />
 
-        {/* Row 3 */}
         <Field label="Height" value={height != null ? `${height} cm` : null} />
         <Field label="Weight" value={weight != null ? `${weight} kg` : null} />
         <Field label="Baseline HR (bpm)" value={baselineHeartRate != null ? String(baselineHeartRate) : null} />
 
-        {/* Row 4 */}
         <Field label="Baseline RR (/min)" value={baselineRespiratoryRate != null ? String(baselineRespiratoryRate) : null} />
-        <Field label="Tidal Volume (mL)"  value={tidalVolume != null ? String(tidalVolume) : null} />
+        <Field label="Baseline Tidal Volume (mL)"  value={baselineTidalVolume != null ? String(baselineTidalVolume) : null} />
         <Field label="Phone" value={phone} />
 
-        {/* Row 5 */}
         <Field label="Email"   value={email} />
         <Field label="Address" value={address} span noBorder />
 

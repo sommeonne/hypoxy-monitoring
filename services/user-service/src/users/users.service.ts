@@ -80,7 +80,7 @@ export class UsersService implements OnModuleInit {
     return this.repo.save(user);
   }
 
-  async update(id: string, dto: Partial<Pick<User, 'firstName' | 'lastName' | 'specialization'>>): Promise<User> {
+  async update(id: string, dto: Partial<Pick<User, 'firstName' | 'lastName' | 'specialization' | 'email' >>): Promise<User> {
     const user = await this.repo.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
     Object.assign(user, dto);

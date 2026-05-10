@@ -73,12 +73,18 @@ export class AnalysisService {
   }
 
   computeConclusion(req: ConcludeRequest): ConcludeResponse {
-    const { finalSpo2, finalHeartRate, finalRespiratoryRate, o2Percentage } = req;
+    const { finalSpo2, finalHeartRate, finalRespiratoryRate, finalTidalVolume, o2Percentage } = req;
 
     const refHR = req.baselineHeartRate ?? req.firstHeartRate ?? finalHeartRate;
     const refRR = req.baselineRespiratoryRate ?? req.firstRespiratoryRate ?? finalRespiratoryRate;
+    const refTV = req.baselineTidalVolume ?? finalTidalVolume;
+
     const hrChangePct = refHR > 0 ? Math.abs((finalHeartRate - refHR) / refHR) * 100 : 0;
     const rrChangePct = refRR > 0 ? Math.abs((finalRespiratoryRate - refRR) / refRR) * 100 : 0;
+    const tvChangePct =
+      refTV != null && refTV > 0 && finalTidalVolume != null
+        ? Math.abs((finalTidalVolume - refTV) / refTV) * 100
+        : null;
 
     let resistance: string;
     if (finalSpo2 > 85) {
@@ -95,11 +101,14 @@ export class AnalysisService {
     }
 
     const hrElevated = hrChangePct > 30;
-    const rrElevated = rrChangePct > 30;
+    // respiratory reaction: elevated if tidal volume change >30% (primary) or RR change >30% (fallback when TV absent)
+    const respiratoryElevated =
+      tvChangePct != null ? tvChangePct > 30 : rrChangePct > 30;
+
     let reaction: string;
-    if (hrElevated && rrElevated) reaction = 'hemodynamic and respiratory reaction elevated';
+    if (hrElevated && respiratoryElevated) reaction = 'hemodynamic and respiratory reaction elevated';
     else if (hrElevated) reaction = 'hemodynamic reaction elevated';
-    else if (rrElevated) reaction = 'respiratory reaction elevated';
+    else if (respiratoryElevated) reaction = 'respiratory reaction elevated';
     else reaction = 'reaction normal';
 
     return { conclusion: `${resistance}, ${reaction}` };

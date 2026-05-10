@@ -17,28 +17,27 @@ export class PatientsService {
     return this.repo.save(patient);
   }
 
-  findAll(role: string, doctorId: string): Promise<Patient[]> {
-    const where = role === 'admin' ? {} : { doctorId };
-    return this.repo.find({ where, order: { createdAt: 'DESC' } });
+  findAll(doctorId: string): Promise<Patient[]> {
+    return this.repo.find({ where: { doctorId }, order: { createdAt: 'DESC' } });
   }
 
-  async findOne(id: string, role?: string, doctorId?: string): Promise<Patient> {
+  async findOne(id: string, doctorId?: string): Promise<Patient> {
     const patient = await this.repo.findOne({ where: { id } });
     if (!patient) throw new NotFoundException(`Patient ${id} not found`);
-    if (role === 'doctor' && patient.doctorId !== doctorId) {
+    if (doctorId && patient.doctorId !== doctorId) {
       throw new ForbiddenException('Access denied');
     }
     return patient;
   }
 
-  async update(id: string, dto: UpdatePatientDto, role: string, doctorId: string): Promise<Patient> {
-    const patient = await this.findOne(id, role, doctorId);
+  async update(id: string, dto: UpdatePatientDto, doctorId: string): Promise<Patient> {
+    const patient = await this.findOne(id, doctorId);
     Object.assign(patient, dto);
     return this.repo.save(patient);
   }
 
-  async remove(id: string, role: string, doctorId: string): Promise<void> {
-    const patient = await this.findOne(id, role, doctorId);
+  async remove(id: string, doctorId: string): Promise<void> {
+    const patient = await this.findOne(id, doctorId);
     await this.repo.softRemove(patient);
   }
 }

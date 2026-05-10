@@ -72,10 +72,10 @@ export class CreatePatientDto {
   @Type(() => Number)
   baselineRespiratoryRate?: number;
 
-  @ApiProperty({ required: false, description: 'Tidal volume (mL)' })
+  @ApiProperty({ required: false, description: 'Baseline tidal volume (mL)' })
   @IsOptional()
   @IsNumber()
   @Type(() => Number)
-  tidalVolume?: number;
+  baselineTidalVolume?: number;
 
 }

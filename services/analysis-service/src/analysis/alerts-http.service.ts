@@ -23,7 +23,7 @@ export class AlertsHttpService {
   async createAlert(payload: CreateAlertPayload): Promise<void> {
     await fetch(`${this.alertServiceUrl}/alerts`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-user-role': 'doctor' },
       body: JSON.stringify(payload),
     });
     this.logger.log(`Alert sent: ${payload.level} for patient ${payload.patientId}`);

@@ -9,10 +9,18 @@ import { Alert } from './alert.entity';
 export class AlertsController {
   constructor(private readonly alertsService: AlertsService) {}
 
+  private requireDoctor(role: string): void {
+    if (role !== 'doctor') throw new ForbiddenException('Access restricted to doctors');
+  }
+
   @Post()
   @ApiOperation({ summary: 'Create a new alert' })
   @ApiResponse({ status: 201, type: Alert })
-  create(@Body() dto: CreateAlertDto): Promise<Alert> {
+  create(
+    @Body() dto: CreateAlertDto,
+    @Headers('x-user-role') role: string,
+  ): Promise<Alert> {
+    this.requireDoctor(role);
     return this.alertsService.create(dto);
   }
 
@@ -26,7 +34,7 @@ export class AlertsController {
     @Query('patientId') patientId?: string,
     @Query('sessionId') sessionId?: string,
   ): Promise<Alert[]> {
-    if (role === 'admin') throw new ForbiddenException('Access to alerts is restricted to doctors');
+    this.requireDoctor(role);
     return this.alertsService.findAll(patientId, sessionId);
   }
 
@@ -37,7 +45,7 @@ export class AlertsController {
     @Param('patientId', ParseUUIDPipe) patientId: string,
     @Headers('x-user-role') role: string,
   ): Promise<Alert[]> {
-    if (role === 'admin') throw new ForbiddenException('Access to alerts is restricted to doctors');
+    this.requireDoctor(role);
     return this.alertsService.findByPatient(patientId);
   }
 }

@@ -224,7 +224,7 @@ export default function PatientDetailPage() {
           address={patient.address}
           baselineHeartRate={patient.baselineHeartRate ?? null}
           baselineRespiratoryRate={patient.baselineRespiratoryRate ?? null}
-          tidalVolume={patient.tidalVolume ?? null}
+          baselineTidalVolume={patient.baselineTidalVolume ?? null}
         />
       ),
     },
@@ -422,16 +422,16 @@ export default function PatientDetailPage() {
             name="o2Percentage"
             rules={[
               { required: true, message: "Required" },
-              { type: "number", min: 10, max: 20, message: "Must be between 10 and 20" },
+              { type: "number", min: 8, max: 22, message: "Must be between 8 and 22" },
             ]}
           >
             <InputNumber
-              min={10}
-              max={20}
+              min={8}
+              max={22}
               step={1}
               addonAfter="%"
               style={{ width: "100%" }}
-              placeholder="10 – 20"
+              placeholder="8 – 22"
             />
           </Form.Item>
           <Form.Item label="Planned Duration">
@@ -637,8 +637,8 @@ export default function PatientDetailPage() {
               <InputNumber style={{ width: '100%' }} min={4} max={60} />
             </Form.Item>
             <Form.Item
-              name="tidalVolume"
-              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Tidal Volume (mL)</span>}
+              name="baselineTidalVolume"
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Baseline Tidal Volume (mL)</span>}
             >
               <InputNumber style={{ width: '100%' }} min={0} max={2000} />
             </Form.Item>

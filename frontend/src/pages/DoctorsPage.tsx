@@ -79,6 +79,7 @@ export default function DoctorsPage() {
     editForm.setFieldsValue({
       firstName: user.firstName,
       lastName: user.lastName,
+      email: user.email,
       specialization: user.specialization,
     });
   };
@@ -268,6 +269,13 @@ export default function DoctorsPage() {
           requiredMark={false}
         >
           {userFormFields}
+          <Form.Item
+            name="email"
+            label={<span style={{ fontWeight: 500, fontSize: 13 }}>Google Email</span>}
+            rules={[{ required: true }, { type: 'email', message: 'Invalid email' }]}
+          >
+            <Input placeholder="doctor@gmail.com" />
+          </Form.Item>
         </Form>
       </Modal>
     </div>

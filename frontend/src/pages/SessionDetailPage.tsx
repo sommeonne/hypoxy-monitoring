@@ -241,11 +241,14 @@ export default function SessionDetailPage() {
         finalSpo2: latest.spo2,
         finalHeartRate: latest.heartRate,
         finalRespiratoryRate: latest.respiratoryRate,
+        finalTidalVolume: latest.tidalVolume ?? undefined,
         o2Percentage: session?.o2Percentage,
         firstHeartRate: first.heartRate,
         firstRespiratoryRate: first.respiratoryRate,
+
         baselineHeartRate: patient?.baselineHeartRate ?? undefined,
         baselineRespiratoryRate: patient?.baselineRespiratoryRate ?? undefined,
+        baselineTidalVolume: patient?.baselineTidalVolume ?? undefined,
       });
       return endSession(id!, {
         totalMeasurements: data.length,

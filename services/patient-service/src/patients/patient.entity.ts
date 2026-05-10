@@ -76,7 +76,7 @@ export class Patient {
 
   @ApiProperty({ nullable: true })
   @Column({ nullable: true, type: 'float' })
-  tidalVolume: number;
+  baselineTidalVolume: number;
 
   @ApiProperty({ nullable: true })
   @Column({ nullable: true })

@@ -28,39 +28,37 @@ export class MeasurementsService {
     );
   }
 
-  private async validateActiveSession(sessionId: string): Promise<void> {
-    let session: { status: string };
+  private async resolveActiveSession(): Promise<{ id: string; patientId: string }> {
+    let res: Response;
     try {
-      const res = await fetch(`${this.sessionServiceUrl}/sessions/${sessionId}`);
-      if (res.status === 404) {
-        throw new BadRequestException('Session not found');
-      }
-      if (!res.ok) {
-        throw new BadRequestException('Unable to validate session');
-      }
-      session = (await res.json()) as { status: string };
-    } catch (err) {
-      if (err instanceof BadRequestException) throw err;
+      res = await fetch(`${this.sessionServiceUrl}/sessions/active`, {
+        headers: { 'x-user-role': 'doctor' },
+      });
+    } catch {
       throw new BadRequestException('Unable to reach session service');
     }
-    if (session.status !== 'active') {
-      throw new BadRequestException('Session is not active — measurements rejected');
+    if (!res.ok) {
+      throw new BadRequestException('Unable to resolve active session');
     }
+    const sessions = await res.json() as { id: string; patientId: string }[];
+    if (!sessions.length) {
+      throw new BadRequestException('No active session — start a session before sending measurements');
+    }
+    return sessions[0];
   }
 
   async create(dto: CreateMeasurementDto): Promise<Measurement> {
-    await this.validateActiveSession(dto.sessionId);
+    const session = await this.resolveActiveSession();
 
-    const measurement = this.measurementRepo.create(dto);
+    const measurement = this.measurementRepo.create({
+      ...dto,
+      sessionId: session.id,
+      patientId: session.patientId,
+    });
     const saved = await this.measurementRepo.save(measurement);
 
-    // Cache latest per patient
-    await this.cache.set(`latest:${dto.patientId}`, saved, 300);
-
-    // Broadcast via WebSocket
+    await this.cache.set(`latest:${session.patientId}`, saved, 300);
     this.gateway.broadcastMeasurement(saved);
-
-    // Publish to Redis for analysis-service
     await this.redisPublisher.publish('measurements', JSON.stringify(saved));
 
     return saved;

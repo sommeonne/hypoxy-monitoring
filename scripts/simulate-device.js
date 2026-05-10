@@ -125,11 +125,10 @@ async function login() {
 
   const role = decodeJwtRole(token);
   if (role === 'admin') {
-    throw new Error(`User "${USERNAME}" has role "admin". The simulator must run as a doctor. Set SIM_USERNAME and SIM_PASSWORD to a doctor account.`);
+    throw new Error(`The simulator must run as a doctor.`);
   }
 }
 
-// Per-session state: keeps values walking smoothly between ticks
 const state = {};
 
 function getOrInitState(sessionId, o2) {
@@ -159,12 +158,11 @@ function nextReading(sessionId, setO2) {
   const s   = getOrInitState(sessionId, o2);
   const b   = bl.bounds;
 
-  // Walk stays within the table's physiological range for this O₂
   s.spo2            = walk(s.spo2,            0.6,  b.spo2[0], b.spo2[1]);
   s.heartRate       = walk(s.heartRate,        2.0,  b.hr[0],   b.hr[1]);
   s.respiratoryRate = walk(s.respiratoryRate,  0.4,  b.rr[0],   b.rr[1]);
   s.tidalVolume     = walk(s.tidalVolume,      12,   b.tv[0],   b.tv[1]);
-  // O₂ measured at device varies ±0.4% around the set point
+
   s.o2Percentage    = walk(s.o2Percentage,     0.2,  Math.max(9, o2 - 0.5), Math.min(21, o2 + 0.5));
 
   return {
@@ -176,11 +174,12 @@ function nextReading(sessionId, setO2) {
   };
 }
 
-async function getActiveSessions() {
-  const res = await fetch(`${GATEWAY_URL}/api/sessions/active`, {
+async function getCurrentSession() {
+  const res = await fetch(`${GATEWAY_URL}/api/sessions/current`, {
     headers: { Authorization: `Bearer ${token}` },
   });
-  if (!res.ok) throw new Error(`Sessions fetch failed: ${res.status}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Session fetch failed: ${res.status}`);
   return res.json();
 }
 
@@ -211,42 +210,35 @@ function o2Label(v) {
 }
 
 async function tick() {
-  let sessions;
+  let session;
   try {
-    sessions = await getActiveSessions();
+    session = await getCurrentSession();
   } catch (e) {
-    err(`Could not fetch sessions — ${e.message}`);
+    err(`Could not fetch session — ${e.message}`);
     return;
   }
 
-  if (sessions.length === 0) {
-    warn('No active sessions found. Start a session in the UI first.');
+  if (!session) {
+    warn('No active session found. Start a session in the UI first.');
     return;
   }
 
-  for (const session of sessions) {
-    const setO2  = session.o2Percentage ?? DEFAULT_O2;
-    const reading = nextReading(session.id, setO2);
-    const payload = {
-      patientId: session.patientId,
-      sessionId: session.id,
-      ...reading,
-    };
+  const setO2   = session.o2Percentage ?? DEFAULT_O2;
+  const reading = nextReading(session.id, setO2);
 
-    try {
-      await postMeasurement(payload);
-      ok(
-        `Session ${c.cyan}${session.id.slice(0, 8)}…${c.reset}` +
-        `  O₂(set) ${o2Label(setO2)}` +
-        `  O₂(meas) ${o2Label(reading.o2Percentage)}` +
-        `  SpO₂ ${spo2Label(reading.spo2)}` +
-        `  HR ${c.white}${reading.heartRate}${c.reset} bpm` +
-        `  RR ${c.white}${reading.respiratoryRate}${c.reset} /min` +
-        `  TV ${c.white}${reading.tidalVolume}${c.reset} mL`,
-      );
-    } catch (e) {
-      err(`Session ${session.id.slice(0, 8)}… — ${e.message}`);
-    }
+  try {
+    await postMeasurement(reading);
+    ok(
+      `Session ${c.cyan}${session.id.slice(0, 8)}…${c.reset}` +
+      `  O₂(set) ${o2Label(setO2)}` +
+      `  O₂(meas) ${o2Label(reading.o2Percentage)}` +
+      `  SpO₂ ${spo2Label(reading.spo2)}` +
+      `  HR ${c.white}${reading.heartRate}${c.reset} bpm` +
+      `  RR ${c.white}${reading.respiratoryRate}${c.reset} /min` +
+      `  TV ${c.white}${reading.tidalVolume}${c.reset} mL`,
+    );
+  } catch (e) {
+    err(`Session ${session.id.slice(0, 8)}… — ${e.message}`);
   }
 }
 

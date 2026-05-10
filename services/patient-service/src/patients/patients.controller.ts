@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Put, Delete,
-  Body, Param, ParseUUIDPipe, HttpCode, HttpStatus, Headers,
+  Body, Param, ParseUUIDPipe, HttpCode, HttpStatus, Headers, ForbiddenException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PatientsService } from './patients.service';
@@ -13,13 +13,19 @@ import { Patient } from './patient.entity';
 export class PatientsController {
   constructor(private readonly patientsService: PatientsService) {}
 
+  private requireDoctor(role: string): void {
+    if (role !== 'doctor') throw new ForbiddenException('Access restricted to doctors');
+  }
+
   @Post()
   @ApiOperation({ summary: 'Register a new patient' })
   @ApiResponse({ status: 201, type: Patient })
   create(
     @Body() dto: CreatePatientDto,
     @Headers('x-user-id') doctorId: string,
+    @Headers('x-user-role') role: string,
   ): Promise<Patient> {
+    this.requireDoctor(role);
     return this.patientsService.create(dto, doctorId);
   }
 
@@ -30,7 +36,8 @@ export class PatientsController {
     @Headers('x-user-role') role: string,
     @Headers('x-user-id') doctorId: string,
   ): Promise<Patient[]> {
-    return this.patientsService.findAll(role, doctorId);
+    this.requireDoctor(role);
+    return this.patientsService.findAll(doctorId);
   }
 
   @Get(':id')
@@ -41,7 +48,8 @@ export class PatientsController {
     @Headers('x-user-role') role: string,
     @Headers('x-user-id') doctorId: string,
   ): Promise<Patient> {
-    return this.patientsService.findOne(id, role, doctorId);
+    this.requireDoctor(role);
+    return this.patientsService.findOne(id, doctorId);
   }
 
   @Put(':id')
@@ -53,7 +61,8 @@ export class PatientsController {
     @Headers('x-user-role') role: string,
     @Headers('x-user-id') doctorId: string,
   ): Promise<Patient> {
-    return this.patientsService.update(id, dto, role, doctorId);
+    this.requireDoctor(role);
+    return this.patientsService.update(id, dto, doctorId);
   }
 
   @Delete(':id')
@@ -64,6 +73,7 @@ export class PatientsController {
     @Headers('x-user-role') role: string,
     @Headers('x-user-id') doctorId: string,
   ): Promise<void> {
-    return this.patientsService.remove(id, role, doctorId);
+    this.requireDoctor(role);
+    return this.patientsService.remove(id, doctorId);
   }
 }

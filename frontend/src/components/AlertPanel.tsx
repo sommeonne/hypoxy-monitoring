@@ -51,7 +51,6 @@ function buildTitle(values: Record<string, number> | undefined): string {
 export default function AlertPanel({ patientIds }: { patientIds: Set<string> }) {
   const { on } = useSocket();
   const [groups, setGroups] = useState<AlertGroup[]>([]);
-  const [, setTick] = useState(0);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const lastSoundRef = useRef<Map<string, number>>(new Map());
   const groupsRef = useRef<AlertGroup[]>([]);
@@ -65,11 +64,6 @@ export default function AlertPanel({ patientIds }: { patientIds: Set<string> }) 
     groupsRef.current = groups;
   }, [groups]);
 
-  // Re-render every second to keep elapsed time fresh
-  useEffect(() => {
-    const id = setInterval(() => setTick((t) => t + 1), 1_000);
-    return () => clearInterval(id);
-  }, []);
 
   function getCtx(): AudioContext | null {
     try {
@@ -115,11 +109,9 @@ export default function AlertPanel({ patientIds }: { patientIds: Set<string> }) 
     if (!ctx) return;
 
     if (type === 'critical') {
-      // Two sharp beeps: 880Hz × 120ms, 80ms gap, 880Hz × 120ms
       playTone(ctx, 880, 0.12, 0.4, 0);
       playTone(ctx, 880, 0.12, 0.4, 0.20);
     } else {
-      // Quiet tick for repeated collapse
       playTone(ctx, 660, 0.06, 0.2, 0);
     }
   }
@@ -141,14 +133,14 @@ export default function AlertPanel({ patientIds }: { patientIds: Set<string> }) 
         const idx = prev.findIndex((g) => g.key === key && now - g.lastAt < WINDOW_MS);
         if (idx >= 0) {
           const next = [...prev];
-          next[idx] = { ...next[idx], count: next[idx].count + 1, lastAt: now };
+          next[idx] = { ...next[idx], title, count: next[idx].count + 1, lastAt: now };
           return next;
         }
         const newGroup: AlertGroup = {
           key,
           level: alert.level,
           title,
-          subtitle: alert.message ?? '',
+          subtitle: '',
           count: 1,
           firstAt: now,
           lastAt: now,
@@ -197,12 +189,6 @@ export default function AlertPanel({ patientIds }: { patientIds: Set<string> }) 
 
       {groups.map((group) => {
         const isCritical = group.level === 'CRITICAL';
-        const elapsed = Math.round((Date.now() - group.firstAt) / 1_000);
-        const timeStr = new Date(group.lastAt).toLocaleTimeString([], {
-          hour: '2-digit',
-          minute: '2-digit',
-          second: '2-digit',
-        });
 
         return (
           <div
@@ -251,17 +237,13 @@ export default function AlertPanel({ patientIds }: { patientIds: Set<string> }) 
                   {group.subtitle}
                 </div>
               )}
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 4 }}>
-                {timeStr}
-                {group.count > 1 &&
-                  ` · ${group.count} occurrences in last ${elapsed}s`}
-              </div>
             </div>
 
             <button
-              onClick={() =>
-                setGroups((prev) => prev.filter((g) => g.key !== group.key))
-              }
+              onClick={() => {
+                lastSoundRef.current.delete(group.key);
+                setGroups((prev) => prev.filter((g) => g.key !== group.key));
+              }}
               style={{
                 background: 'none',
                 border: 'none',

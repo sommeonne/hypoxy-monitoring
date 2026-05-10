@@ -1,17 +1,7 @@
-import { IsUUID, IsNumber, Min, Max, IsNotEmpty, IsOptional } from 'class-validator';
+import { IsNumber, Min, Max, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateMeasurementDto {
-  @ApiProperty({ description: 'Patient UUID' })
-  @IsUUID()
-  @IsNotEmpty()
-  patientId: string;
-
-  @ApiProperty({ description: 'Session UUID' })
-  @IsUUID()
-  @IsNotEmpty()
-  sessionId: string;
-
   @ApiProperty({ description: 'SpO2 percentage', minimum: 0, maximum: 100 })
   @IsNumber()
   @Min(0)
@@ -30,11 +20,11 @@ export class CreateMeasurementDto {
   @Max(100)
   respiratoryRate: number;
 
-  @ApiProperty({ description: 'Inhaled O₂ concentration %', minimum: 10, maximum: 21, required: false })
+  @ApiProperty({ description: 'Inhaled O₂ concentration %', minimum: 8, maximum: 22, required: false })
   @IsOptional()
   @IsNumber()
-  @Min(10)
-  @Max(21)
+  @Min(8)
+  @Max(22)
   o2Percentage?: number;
 
   @ApiProperty({ description: 'Tidal volume in mL', minimum: 200, maximum: 1500, required: false })

@@ -73,11 +73,10 @@ export class SessionsService {
     });
   }
 
-  findActive(doctorId: string): Promise<Session[]> {
-    return this.repo.find({
-      where: { status: SessionStatus.ACTIVE, doctorId },
-      order: { startedAt: 'DESC' },
-    });
+  findActive(doctorId?: string): Promise<Session[]> {
+    const where: any = { status: SessionStatus.ACTIVE };
+    if (doctorId) where.doctorId = doctorId;
+    return this.repo.find({ where, order: { startedAt: 'DESC' } });
   }
 
   async updateNotes(id: string, notes: string | undefined, doctorId?: string): Promise<Session> {

@@ -5,7 +5,10 @@ let socket: Socket | null = null;
 
 function getSocket(): Socket {
   if (!socket) {
-    socket = io(window.location.origin, { transports: ['websocket', 'polling'] });
+    socket = io(window.location.origin, {
+      transports: ['websocket', 'polling'],
+      auth: { token: localStorage.getItem('access_token') ?? '' },
+    });
   }
   return socket;
 }

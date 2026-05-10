@@ -26,17 +26,23 @@ export class DataFetcherService {
   }
 
   async getPatient(patientId: string): Promise<any> {
-    const res = await fetch(`${this.patientUrl}/patients/${patientId}`);
+    const res = await fetch(`${this.patientUrl}/patients/${patientId}`, {
+      headers: { 'x-user-role': 'doctor' },
+    });
     return res.json();
   }
 
   async getMeasurements(sessionId: string): Promise<any[]> {
-    const res = await fetch(`${this.deviceUrl}/devices/measurements/${sessionId}`);
+    const res = await fetch(`${this.deviceUrl}/devices/measurements/${sessionId}`, {
+      headers: { 'x-user-role': 'doctor' },
+    });
     return res.json();
   }
 
   async getAlertsBySession(sessionId: string): Promise<any[]> {
-    const res = await fetch(`${this.alertUrl}/alerts?sessionId=${sessionId}`);
+    const res = await fetch(`${this.alertUrl}/alerts?sessionId=${sessionId}`, {
+      headers: { 'x-user-role': 'doctor' },
+    });
     return res.json();
   }
 }

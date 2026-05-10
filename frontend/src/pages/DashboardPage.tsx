@@ -1,76 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Row, Col, Card, Table, Tag, Typography, Empty, Spin } from 'antd';
-import {
-  MonitorOutlined,
-  AlertOutlined,
-  ExclamationCircleOutlined,
-} from '@ant-design/icons';
+import React, { useEffect, useMemo } from 'react';
+import { Row, Col, Card, Table, Tag, Typography, Empty, Spin, Button } from 'antd';
+import { MonitorOutlined, ArrowRightOutlined, AlertOutlined } from '@ant-design/icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { fetchActiveSessions } from '../api/sessions';
+import { fetchActiveSessions, Session } from '../api/sessions';
 import { fetchPatients } from '../api/patients';
-import { fetchAlerts, Alert } from '../api/alerts';
+import { fetchAlerts } from '../api/alerts';
 import { useSocket } from '../hooks/useSocket';
 import { useNavigate } from 'react-router-dom';
 
 const { Text } = Typography;
 
-type AlertFilter = 'ALL' | 'CRITICAL' | 'WARNING';
-
-function StatCard({
-  label,
-  value,
-  icon,
-  accent,
-  bg,
-}: {
-  label: string;
-  value: number;
-  icon: React.ReactNode;
-  accent: string;
-  bg: string;
-}) {
-  return (
-    <Card
-      style={{
-        borderRadius: 12,
-        border: '1px solid #E2E8F0',
-        borderLeft: `4px solid ${accent}`,
-        background: '#fff',
-        boxShadow: 'none',
-      }}
-      styles={{ body: { padding: '20px 24px' } }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <div>
-          <div className="label-caps" style={{ marginBottom: 8 }}>{label}</div>
-          <div style={{ fontSize: 32, fontWeight: 700, color: accent, lineHeight: 1 }}>{value}</div>
-        </div>
-        <div
-          style={{
-            width: 44,
-            height: 44,
-            borderRadius: 12,
-            background: bg,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: 20,
-            color: accent,
-          }}
-        >
-          {icon}
-        </div>
-      </div>
-    </Card>
-  );
-}
-
 export default function DashboardPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { on } = useSocket();
-  const [alertFilter, setAlertFilter] = useState<AlertFilter>('ALL');
-  const [alertPage, setAlertPage] = useState(1);
+  const { on, joinSession, leaveSession } = useSocket();
 
   const { data: sessions = [], isLoading } = useQuery({
     queryKey: ['activeSessions'],
@@ -96,6 +39,12 @@ export default function DashboardPage() {
     refetchInterval: 15_000,
   });
   const alerts = rawAlerts.filter((a) => myPatientIds.has(a.patientId));
+  const criticalCount = alerts.filter((a) => a.level === 'CRITICAL').length;
+
+  useEffect(() => {
+    sessions.forEach((s) => joinSession(s.id));
+    return () => { sessions.forEach((s) => leaveSession(s.id)); };
+  }, [sessions, joinSession, leaveSession]);
 
   useEffect(() => {
     const offM = on('measurement:new', () =>
@@ -112,62 +61,112 @@ export default function DashboardPage() {
 
   if (isLoading) return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;
 
-  const criticalCount = alerts.filter((a) => a.level === 'CRITICAL').length;
-  const warningCount = alerts.filter((a) => a.level === 'WARNING').length;
-
-  const filteredAlerts = alerts.filter((a) => {
-    if (alertFilter === 'ALL') return true;
-    if (alertFilter === 'CRITICAL') return a.level === 'CRITICAL';
-    if (alertFilter === 'WARNING') return a.level === 'WARNING';
-    return true;
-  });
-
-  const filterButtons: { key: AlertFilter; label: string; cls: string }[] = [
-    { key: 'ALL', label: `All (${alerts.length})`, cls: 'f-all' },
-    { key: 'CRITICAL', label: `Critical (${criticalCount})`, cls: 'f-critical' },
-    { key: 'WARNING', label: `Warning (${warningCount})`, cls: 'f-warning' },
+  const sessionColumns = [
+    {
+      title: <span className="label-caps">Patient</span>,
+      dataIndex: 'patientId',
+      render: (pid: string) => (
+        <Text style={{ color: '#374151', fontSize: 13 }}>
+          {patientNames[pid] ?? `—`}
+        </Text>
+      ),
+    },
+    {
+      title: <span className="label-caps">Started</span>,
+      dataIndex: 'startedAt',
+      render: (d: string) => (
+        <Text style={{ color: '#374151', fontSize: 13 }}>
+          {new Date(d).toLocaleString()}
+        </Text>
+      ),
+    },
+    {
+      title: <span className="label-caps">Status</span>,
+      dataIndex: 'status',
+      width: 100,
+      render: (s: string) => (
+        <Tag
+          style={{
+            background: s === 'active' ? '#E1F5EE' : '#F1F5F9',
+            color: s === 'active' ? '#1D9E75' : '#64748B',
+            border: 'none',
+            borderRadius: 6,
+            fontWeight: 600,
+            fontSize: 11,
+          }}
+        >
+          {s.toUpperCase()}
+        </Tag>
+      ),
+    },
+    {
+      title: '',
+      width: 80,
+      render: (_: any, s: Session) => (
+        <Button
+          type="text"
+          icon={<ArrowRightOutlined />}
+          onClick={() => navigate(`/sessions/${s.id}`)}
+          style={{ color: '#1D9E75', fontWeight: 500 }}
+        >
+          View
+        </Button>
+      ),
+    },
   ];
 
   return (
     <div>
-      {/* Page title */}
       <div style={{ marginBottom: 24 }}>
         <h1 style={{ fontSize: 22, fontWeight: 700, color: '#0F172A', margin: 0 }}>Dashboard</h1>
         <Text style={{ color: '#64748B', fontSize: 13 }}>Real-time patient monitoring overview</Text>
       </div>
 
-      {/* Stat cards */}
       <Row gutter={[16, 16]} style={{ marginBottom: 28 }}>
         <Col xs={24} sm={12} lg={8}>
-          <StatCard
-            label="Active Sessions"
-            value={sessions.length}
-            icon={<MonitorOutlined />}
-            accent="#1D9E75"
-            bg="#E1F5EE"
-          />
+          <Card
+            style={{
+              borderRadius: 12, border: '1px solid #E2E8F0',
+              borderLeft: '4px solid #1D9E75', background: '#fff', boxShadow: 'none',
+            }}
+            styles={{ body: { padding: '20px 24px' } }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div className="label-caps" style={{ marginBottom: 8 }}>Active Sessions</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: '#1D9E75', lineHeight: 1 }}>
+                  {sessions.length}
+                </div>
+              </div>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: '#E1F5EE', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#1D9E75' }}>
+                <MonitorOutlined />
+              </div>
+            </div>
+          </Card>
         </Col>
         <Col xs={24} sm={12} lg={8}>
-          <StatCard
-            label="Critical Alerts"
-            value={criticalCount}
-            icon={<AlertOutlined />}
-            accent="#E24B4A"
-            bg="#FEF2F2"
-          />
-        </Col>
-        <Col xs={24} sm={12} lg={8}>
-          <StatCard
-            label="Warning Alerts"
-            value={warningCount}
-            icon={<ExclamationCircleOutlined />}
-            accent="#EF9F27"
-            bg="#FFFBEB"
-          />
+          <Card
+            style={{
+              borderRadius: 12, border: '1px solid #E2E8F0',
+              borderLeft: '4px solid #E24B4A', background: '#fff', boxShadow: 'none',
+            }}
+            styles={{ body: { padding: '20px 24px' } }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <div className="label-caps" style={{ marginBottom: 8 }}>Critical Alerts</div>
+                <div style={{ fontSize: 32, fontWeight: 700, color: '#E24B4A', lineHeight: 1 }}>
+                  {criticalCount}
+                </div>
+              </div>
+              <div style={{ width: 44, height: 44, borderRadius: 12, background: '#FEF2F2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20, color: '#E24B4A' }}>
+                <AlertOutlined />
+              </div>
+            </div>
+          </Card>
         </Col>
       </Row>
 
-      {/* Active sessions */}
       <Card
         style={{ marginBottom: 24, borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
         styles={{ body: { padding: 20 } }}
@@ -176,12 +175,9 @@ export default function DashboardPage() {
             <span style={{ fontSize: 15, fontWeight: 600, color: '#0F172A' }}>Active Sessions</span>
             <span
               style={{
-                background: '#E1F5EE',
-                color: '#1D9E75',
-                borderRadius: 20,
-                padding: '1px 10px',
-                fontSize: 12,
-                fontWeight: 600,
+                background: '#E1F5EE', color: '#1D9E75',
+                borderRadius: 20, padding: '1px 10px',
+                fontSize: 12, fontWeight: 600,
               }}
             >
               {sessions.length}
@@ -189,102 +185,31 @@ export default function DashboardPage() {
           </div>
         }
       >
-        {sessions.length === 0 ? (
-          <Empty description="No active sessions" image={Empty.PRESENTED_IMAGE_SIMPLE} />
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {sessions.map((session) => (
-              <div
-                key={session.id}
-                onClick={() => navigate(`/sessions/${session.id}`)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  padding: '12px 16px',
-                  borderRadius: 8,
-                  border: '1px solid #E2E8F0',
-                  cursor: 'pointer',
-                  transition: 'background 0.15s, border-color 0.15s',
-                  background: '#fff',
-                }}
-                onMouseEnter={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = '#F0FDF9';
-                  (e.currentTarget as HTMLElement).style.borderColor = '#1D9E75';
-                }}
-                onMouseLeave={(e) => {
-                  (e.currentTarget as HTMLElement).style.background = '#fff';
-                  (e.currentTarget as HTMLElement).style.borderColor = '#E2E8F0';
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <div className="pulse-dot-wrap"><div className="pulse-dot-inner" /></div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: '#0F172A' }}>
-                      Session {session.id.slice(0, 8)}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
-                      {patientNames[session.patientId] ?? `Patient ${session.patientId.slice(0, 8)}`}
-                    </div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <Text style={{ fontSize: 12, color: '#94A3B8' }}>
-                    {new Date(session.startedAt).toLocaleTimeString()}
-                  </Text>
-                  <Tag
-                    style={{
-                      background: '#E1F5EE',
-                      color: '#1D9E75',
-                      border: 'none',
-                      borderRadius: 6,
-                      fontWeight: 600,
-                      fontSize: 11,
-                    }}
-                  >
-                    ACTIVE
-                  </Tag>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <Table
+          dataSource={sessions}
+          columns={sessionColumns}
+          rowKey="id"
+          size="small"
+          pagination={{ pageSize: 10, size: 'small' }}
+          className="teal-table"
+          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No active sessions" /> }}
+          onRow={(s) => ({
+            onClick: () => navigate(`/sessions/${s.id}`),
+            style: { cursor: 'pointer' },
+          })}
+        />
       </Card>
 
-      {/* Alerts table */}
       <Card
         style={{ borderRadius: 12, border: '1px solid #E2E8F0', boxShadow: 'none' }}
         styles={{ body: { padding: 20 } }}
-        title={
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
-            <span style={{ fontSize: 15, fontWeight: 600, color: '#0F172A' }}>Alerts</span>
-            <div style={{ display: 'flex', gap: 6 }}>
-              {filterButtons.map(({ key, label, cls }) => (
-                <button
-                  key={key}
-                  className={`filter-btn ${alertFilter === key ? cls : ''}`}
-                  onClick={() => { setAlertFilter(key); setAlertPage(1); }}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-        }
+        title={<span style={{ fontSize: 15, fontWeight: 600, color: '#0F172A' }}>Alerts</span>}
       >
         <Table
-          dataSource={filteredAlerts}
+          dataSource={alerts}
           rowKey="id"
           size="small"
-          pagination={{
-            current: alertPage,
-            pageSize: 10,
-            total: filteredAlerts.length,
-            onChange: (page) => setAlertPage(page),
-            showSizeChanger: false,
-            showTotal: (total) => `Total ${total}`,
-            size: 'small',
-          }}
+          pagination={{ pageSize: 10, size: 'small', showTotal: (total) => `Total ${total}` }}
           className="teal-table"
           locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No alerts" /> }}
           columns={[
@@ -299,10 +224,8 @@ export default function DashboardPage() {
                     style={{
                       background: isC ? '#FEF2F2' : '#FFFBEB',
                       color: isC ? '#E24B4A' : '#EF9F27',
-                      border: 'none',
-                      borderRadius: 6,
-                      fontWeight: 600,
-                      fontSize: 11,
+                      border: 'none', borderRadius: 6,
+                      fontWeight: 600, fontSize: 11,
                     }}
                   >
                     {l}

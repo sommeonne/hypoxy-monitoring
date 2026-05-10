@@ -17,7 +17,7 @@ export interface Patient {
   email: string;
   baselineHeartRate?: number;
   baselineRespiratoryRate?: number;
-  tidalVolume?: number;
+  baselineTidalVolume?: number;
   createdAt: string;
 }
 

@@ -47,8 +47,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 20s
-    ports:
-      - "5432:5432"
 
   redis:
     image: redis:7-alpine
@@ -61,8 +59,6 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
-    ports:
-      - "6379:6379"
 
   user-service:
     build:
@@ -77,8 +73,6 @@ services:
       GOOGLE_CALLBACK_URL: ${GOOGLE_CALLBACK_URL:-http://localhost:3000/api/auth/google/callback}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
       ADMIN_EMAIL: ${ADMIN_EMAIL}
-    ports:
-      - "3007:3007"
     networks:
       - hypoxy-net
     healthcheck:
@@ -129,8 +123,6 @@ services:
     environment:
       <<: *common-env
       PORT: 3001
-    ports:
-      - "3001:3001"
     networks:
       - hypoxy-net
     healthcheck:
@@ -149,8 +141,6 @@ services:
       <<: *common-env
       PORT: 3002
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
-    ports:
-      - "3002:3002"
     networks:
       - hypoxy-net
     healthcheck:
@@ -168,8 +158,6 @@ services:
     environment:
       <<: *common-env
       PORT: 3003
-    ports:
-      - "3003:3003"
     networks:
       - hypoxy-net
     healthcheck:
@@ -187,8 +175,6 @@ services:
     environment:
       <<: *common-env
       PORT: 3004
-    ports:
-      - "3004:3004"
     networks:
       - hypoxy-net
     healthcheck:
@@ -206,8 +192,6 @@ services:
     environment:
       <<: *common-env
       PORT: 3005
-    ports:
-      - "3005:3005"
     networks:
       - hypoxy-net
     healthcheck:
@@ -230,8 +214,6 @@ services:
       SMTP_USER: ${SMTP_USER}
       SMTP_PASS: ${SMTP_PASS}
       SMTP_FROM: ${SMTP_FROM}
-    ports:
-      - "3006:3006"
     networks:
       - hypoxy-net
     healthcheck:
