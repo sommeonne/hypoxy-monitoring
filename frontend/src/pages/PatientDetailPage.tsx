@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   Card,
@@ -30,6 +30,7 @@ import { fetchPatient, updatePatient, deletePatient } from "../api/patients";
 import { isAdmin } from "../utils/auth";
 import { fetchPatientSessions, startSession, Session } from "../api/sessions";
 import PatientInfoCard from "../components/PatientInfoCard";
+import { useSocket } from "../hooks/useSocket";
 
 const { Text } = Typography;
 
@@ -66,6 +67,7 @@ export default function PatientDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { on } = useSocket();
   const [modalOpen, setModalOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editForm] = Form.useForm();
@@ -76,6 +78,11 @@ export default function PatientDetailPage() {
     queryFn: () => fetchPatient(id!),
     enabled: !!id,
   });
+
+  useEffect(
+    () => on('session:updated', () => queryClient.invalidateQueries({ queryKey: ['patientSessions', id] })),
+    [on, queryClient, id],
+  );
 
   const { data: sessions = [], isLoading: sessLoading } = useQuery({
     queryKey: ["patientSessions", id],

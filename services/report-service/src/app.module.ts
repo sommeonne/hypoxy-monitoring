@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ScheduleModule } from '@nestjs/schedule';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -6,6 +7,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { ReportsModule } from './reports/reports.module';
 import { HealthModule } from './health/health.module';
 import { Report } from './reports/report.entity';
+import { RolesGuard } from './common/roles.guard';
 
 @Module({
   imports: [
@@ -37,5 +39,6 @@ import { Report } from './reports/report.entity';
     ReportsModule,
     HealthModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: RolesGuard }],
 })
 export class AppModule {}

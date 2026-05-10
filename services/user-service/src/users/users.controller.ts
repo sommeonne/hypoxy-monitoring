@@ -6,9 +6,12 @@ import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from './user.entity';
+import { Roles } from '../common/roles.decorator';
+import { Role } from '../common/roles.enum';
 
 @ApiTags('users')
 @Controller('users')
+@Roles(Role.Admin)
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 

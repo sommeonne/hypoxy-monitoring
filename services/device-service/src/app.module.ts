@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { CacheModule } from '@nestjs/cache-manager';
@@ -6,6 +7,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { MeasurementsModule } from './measurements/measurements.module';
 import { Measurement } from './measurements/measurement.entity';
 import { HealthModule } from './health/health.module';
+import { RolesGuard } from './common/roles.guard';
 
 @Module({
   imports: [
@@ -35,13 +37,14 @@ import { HealthModule } from './health/health.module';
     CacheModule.registerAsync({
       isGlobal: true,
       inject: [ConfigService],
-      useFactory: (config: ConfigService) => ({
+      useFactory: () => ({
         ttl: 300,
-        store: 'memory', // Use memory store for simplicity; switch to redis in prod
+        store: 'memory',
       }),
     }),
     MeasurementsModule,
     HealthModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: RolesGuard }],
 })
 export class AppModule {}

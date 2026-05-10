@@ -1,10 +1,12 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { LoggerModule } from 'nestjs-pino';
 import { AlertsModule } from './alerts/alerts.module';
 import { Alert } from './alerts/alert.entity';
 import { HealthModule } from './health/health.module';
+import { RolesGuard } from './common/roles.guard';
 
 @Module({
   imports: [
@@ -35,5 +37,6 @@ import { HealthModule } from './health/health.module';
     AlertsModule,
     HealthModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: RolesGuard }],
 })
 export class AppModule {}

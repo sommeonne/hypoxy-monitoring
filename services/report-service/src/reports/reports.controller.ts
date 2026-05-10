@@ -1,30 +1,27 @@
 import {
-  Controller, Get, Post, Param, ParseUUIDPipe, Res, HttpCode, HttpStatus, Headers, ForbiddenException,
+  Controller, Get, Post, Param, ParseUUIDPipe, Res, HttpCode, HttpStatus, Headers,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { Response } from 'express';
 import { ReportsService } from './reports.service';
 import { Report } from './report.entity';
+import { Roles } from '../common/roles.decorator';
+import { Role } from '../common/roles.enum';
 
 @ApiTags('reports')
 @Controller('reports')
+@Roles(Role.Doctor)
 export class ReportsController {
   constructor(private readonly reportsService: ReportsService) {}
-
-  private requireDoctor(role: string): void {
-    if (role !== 'doctor') throw new ForbiddenException('Access restricted to doctors');
-  }
 
   @Get('session/:id/pdf')
   @ApiOperation({ summary: 'Generate PDF report for a session' })
   @ApiResponse({ status: 200, description: 'PDF file' })
   async getSessionPdf(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-user-role') role: string,
     @Headers('x-user-id') doctorId: string,
     @Res() res: Response,
   ) {
-    this.requireDoctor(role);
     const buffer = await this.reportsService.generateSessionPdf(id, doctorId);
     res.set({
       'Content-Type': 'application/pdf',
@@ -39,11 +36,9 @@ export class ReportsController {
   @ApiResponse({ status: 200, description: 'Excel file' })
   async getSessionExcel(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-user-role') role: string,
     @Headers('x-user-id') doctorId: string,
     @Res() res: Response,
   ) {
-    this.requireDoctor(role);
     const buffer = await this.reportsService.generateSessionExcel(id, doctorId);
     res.set({
       'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -59,10 +54,8 @@ export class ReportsController {
   @ApiResponse({ status: 204, description: 'Email sent successfully' })
   async sendSessionEmail(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-user-role') role: string,
     @Headers('x-user-id') doctorId: string,
   ) {
-    this.requireDoctor(role);
     await this.reportsService.sendSessionReportEmail(id, doctorId);
   }
 
@@ -71,10 +64,8 @@ export class ReportsController {
   @ApiResponse({ status: 200, type: [Report] })
   async getSessionReports(
     @Param('id', ParseUUIDPipe) id: string,
-    @Headers('x-user-role') role: string,
     @Headers('x-user-id') doctorId: string,
   ): Promise<Report[]> {
-    this.requireDoctor(role);
     return this.reportsService.getSessionReports(id, doctorId);
   }
 }

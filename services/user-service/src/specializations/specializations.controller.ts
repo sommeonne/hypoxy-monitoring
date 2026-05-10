@@ -3,6 +3,8 @@ import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { IsString, IsNotEmpty } from 'class-validator';
 import { SpecializationsService } from './specializations.service';
 import { Specialization } from './specialization.entity';
+import { Roles } from '../common/roles.decorator';
+import { Role } from '../common/roles.enum';
 
 class CreateSpecializationDto {
   @IsString()
@@ -22,12 +24,14 @@ export class SpecializationsController {
   }
 
   @Post()
+  @Roles(Role.Admin)
   @ApiOperation({ summary: 'Create a specialization' })
   create(@Body() dto: CreateSpecializationDto): Promise<Specialization> {
     return this.service.create(dto.name);
   }
 
   @Delete(':id')
+  @Roles(Role.Admin)
   @HttpCode(HttpStatus.NO_CONTENT)
   @ApiOperation({ summary: 'Delete a specialization' })
   remove(@Param('id', ParseUUIDPipe) id: string): Promise<void> {

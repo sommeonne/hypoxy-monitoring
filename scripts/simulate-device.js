@@ -175,18 +175,19 @@ function nextReading(sessionId, setO2) {
 }
 
 async function getCurrentSession() {
-  const res = await fetch(`${GATEWAY_URL}/api/sessions/current`, {
+  const res = await fetch(`${GATEWAY_URL}/api/sessions/active`, {
     headers: { Authorization: `Bearer ${token}` },
   });
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(`Session fetch failed: ${res.status}`);
-  return res.json();
+  const sessions = await res.json();
+  return sessions[0] ?? null;
 }
 
 async function postMeasurement(payload) {
-  const res = await fetch(`${DEVICE_URL}/devices/measurements`, {
+  const res = await fetch(`${GATEWAY_URL}/api/devices/measurements`, {
     method:  'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body:    JSON.stringify(payload),
   });
   if (!res.ok) {
