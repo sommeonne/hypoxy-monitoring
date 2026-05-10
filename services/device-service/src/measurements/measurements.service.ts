@@ -51,7 +51,11 @@ export class MeasurementsService {
     const session = await this.resolveActiveSession();
 
     const measurement = this.measurementRepo.create({
-      ...dto,
+      spo2: dto.spo2,
+      heartRate: dto.heartRate,
+      respiratoryRate: dto.respiratoryRate,
+      o2Percentage: dto.o2Percentage,
+      tidalVolume: dto.tidalVolume,
       sessionId: session.id,
       patientId: session.patientId,
     });

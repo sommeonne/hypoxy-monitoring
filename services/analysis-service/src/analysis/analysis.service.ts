@@ -1,16 +1,12 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AlertLevel, THRESHOLDS, Measurement, AnalysisResult, ConcludeRequest, ConcludeResponse } from './thresholds';
-import { AlertsHttpService } from './alerts-http.service';
 import { RedisPublisherService } from './redis-publisher.service';
 
 @Injectable()
 export class AnalysisService {
   private readonly logger = new Logger(AnalysisService.name);
 
-  constructor(
-    private readonly alertsHttp: AlertsHttpService,
-    private readonly redisPublisher: RedisPublisherService,
-  ) {}
+  constructor(private readonly redisPublisher: RedisPublisherService) {}
 
   async analyze(measurement: Measurement): Promise<AnalysisResult> {
     const anomalies: string[] = [];
@@ -50,10 +46,6 @@ export class AnalysisService {
 
     const result: AnalysisResult = {
       level,
-      message:
-        anomalies.length > 0
-          ? anomalies.join('; ')
-          : 'All parameters within normal range',
       anomalies,
       measurement,
     };
@@ -101,7 +93,7 @@ export class AnalysisService {
     }
 
     const hrElevated = hrChangePct > 30;
-    // respiratory reaction: elevated if tidal volume change >30% (primary) or RR change >30% (fallback when TV absent)
+
     const respiratoryElevated =
       tvChangePct != null ? tvChangePct > 30 : rrChangePct > 30;
 
@@ -115,22 +107,17 @@ export class AnalysisService {
   }
 
   private async sendAlert(result: AnalysisResult): Promise<void> {
-    try {
-      await this.alertsHttp.createAlert({
-        patientId: result.measurement.patientId,
-        sessionId: result.measurement.sessionId,
-        measurementId: result.measurement.id,
-        level: result.level,
-        message: result.message,
-        values: {
-          spo2: result.measurement.spo2,
-          heartRate: result.measurement.heartRate,
-          respiratoryRate: result.measurement.respiratoryRate,
-          ...(result.measurement.tidalVolume != null && { tidalVolume: result.measurement.tidalVolume }),
-        },
-      });
-    } catch (err) {
-      this.logger.error('Failed to send alert', err);
-    }
+    await this.redisPublisher.publish('critical', JSON.stringify({
+      patientId: result.measurement.patientId,
+      sessionId: result.measurement.sessionId,
+      measurementId: result.measurement.id,
+      level: result.level,
+values: {
+        spo2: result.measurement.spo2,
+        heartRate: result.measurement.heartRate,
+        respiratoryRate: result.measurement.respiratoryRate,
+        ...(result.measurement.tidalVolume != null && { tidalVolume: result.measurement.tidalVolume }),
+      },
+    }));
   }
 }

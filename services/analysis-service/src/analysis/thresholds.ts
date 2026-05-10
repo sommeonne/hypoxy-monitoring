@@ -38,7 +38,6 @@ export interface Measurement {
 
 export interface AnalysisResult {
   level: AlertLevel;
-  message: string;
   anomalies: string[];
   measurement: Measurement;
 }

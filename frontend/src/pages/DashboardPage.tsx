@@ -7,6 +7,7 @@ import { fetchPatients } from '../api/patients';
 import { fetchAlerts } from '../api/alerts';
 import { useSocket } from '../hooks/useSocket';
 import { useNavigate } from 'react-router-dom';
+import AlertsTable from '../components/AlertsTable';
 
 const { Text } = Typography;
 
@@ -205,51 +206,7 @@ export default function DashboardPage() {
         styles={{ body: { padding: 20 } }}
         title={<span style={{ fontSize: 15, fontWeight: 600, color: '#0F172A' }}>Alerts</span>}
       >
-        <Table
-          dataSource={alerts}
-          rowKey="id"
-          size="small"
-          pagination={{ pageSize: 10, size: 'small', showTotal: (total) => `Total ${total}` }}
-          className="teal-table"
-          locale={{ emptyText: <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="No alerts" /> }}
-          columns={[
-            {
-              title: <span className="label-caps">Level</span>,
-              dataIndex: 'level',
-              width: 110,
-              render: (l: string) => {
-                const isC = l === 'CRITICAL';
-                return (
-                  <Tag
-                    style={{
-                      background: isC ? '#FEF2F2' : '#FFFBEB',
-                      color: isC ? '#E24B4A' : '#EF9F27',
-                      border: 'none', borderRadius: 6,
-                      fontWeight: 600, fontSize: 11,
-                    }}
-                  >
-                    {l}
-                  </Tag>
-                );
-              },
-            },
-            {
-              title: <span className="label-caps">Message</span>,
-              dataIndex: 'message',
-              ellipsis: true,
-            },
-            {
-              title: <span className="label-caps">Time</span>,
-              dataIndex: 'createdAt',
-              width: 160,
-              render: (d: string) => (
-                <span style={{ color: '#64748B', fontSize: 12 }}>
-                  {new Date(d).toLocaleString()}
-                </span>
-              ),
-            },
-          ]}
-        />
+        <AlertsTable alerts={alerts} />
       </Card>
     </div>
   );

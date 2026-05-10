@@ -20,11 +20,6 @@ export class CreateAlertDto {
   level: AlertLevel;
 
   @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  message: string;
-
-  @ApiProperty()
   @IsObject()
   values: Record<string, number>;
 }

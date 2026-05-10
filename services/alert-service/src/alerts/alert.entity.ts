@@ -29,10 +29,6 @@ export class Alert {
   level: AlertLevel;
 
   @ApiProperty()
-  @Column()
-  message: string;
-
-  @ApiProperty()
   @Column({ type: 'jsonb' })
   values: Record<string, number>;
 

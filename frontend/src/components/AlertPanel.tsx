@@ -5,7 +5,6 @@ interface AlertData {
   id: string;
   patientId: string;
   level: 'CRITICAL';
-  message: string;
   values: Record<string, number>;
   createdAt: string;
 }

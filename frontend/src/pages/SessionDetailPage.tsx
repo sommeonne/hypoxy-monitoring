@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Button, Table, Spin, Input, Modal, Badge, message } from 'antd';
+import { Button, Spin, Input, Modal, Badge, message } from 'antd';
 import {
   DownloadOutlined,
   StopOutlined,
@@ -18,6 +18,7 @@ import { fetchAlerts, Alert } from '../api/alerts';
 import { fetchPatient } from '../api/patients';
 import { useSocket } from '../hooks/useSocket';
 import MeasurementChart from '../components/MeasurementChart';
+import AlertsTable from '../components/AlertsTable';
 
 type AlertFilter = 'ALL' | 'CRITICAL';
 
@@ -45,15 +46,6 @@ function formatCountdown(seconds: number): string {
   const m = Math.floor(abs / 60).toString().padStart(2, '0');
   const s = (abs % 60).toString().padStart(2, '0');
   return `${seconds < 0 ? '-' : ''}${m}:${s}`;
-}
-
-function formatAlertValues(values: Record<string, number>): string {
-  const parts: string[] = [];
-  if (values.spo2 != null) parts.push(`SpO₂ ${values.spo2}%`);
-  if (values.heartRate != null) parts.push(`HR ${values.heartRate}`);
-  if (values.respiratoryRate != null) parts.push(`RR ${values.respiratoryRate}`);
-  if (values.o2Percentage != null) parts.push(`O₂ ${values.o2Percentage}%`);
-  return parts.join(' / ');
 }
 
 // ─── Tiny card shell ──────────────────────────────────────────────────────────
@@ -125,27 +117,6 @@ function SideVital({ name, value, unit }: { name: string; value: React.ReactNode
         {value} <span style={{ fontSize: 11, color: '#94A3B8', fontWeight: 400 }}>{unit}</span>
       </span>
     </div>
-  );
-}
-
-// ─── Alert level tag ──────────────────────────────────────────────────────────
-
-function LevelTag({ level }: { level: string }) {
-  const isC = level === 'CRITICAL';
-  return (
-    <span
-      style={{
-        display: 'inline-block',
-        fontSize: 10,
-        fontWeight: 600,
-        padding: '2px 8px',
-        borderRadius: 4,
-        background: isC ? '#FEF2F2' : '#FFFBEB',
-        color: isC ? '#E24B4A' : '#EF9F27',
-      }}
-    >
-      {level.charAt(0) + level.slice(1).toLowerCase()}
-    </span>
   );
 }
 
@@ -671,42 +642,7 @@ export default function SessionDetailPage() {
               </div>
             }
           >
-            <Table
-              dataSource={filteredAlerts}
-              rowKey="id"
-              size="small"
-              pagination={{ pageSize: 10 }}
-              className="teal-table"
-              style={{ margin: 0 }}
-              columns={[
-                {
-                  title: <span className="label-caps">Time</span>,
-                  dataIndex: 'createdAt',
-                  width: 80,
-                  render: (d: string) => (
-                    <span style={{ fontSize: 11, color: '#94A3B8', whiteSpace: 'nowrap' }}>
-                      {new Date(d).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                    </span>
-                  ),
-                },
-                {
-                  title: <span className="label-caps">Level</span>,
-                  dataIndex: 'level',
-                  width: 100,
-                  render: (_: string, record: Alert) => <LevelTag level={record.level} />,
-                },
-                {
-                  title: <span className="label-caps">Triggered vitals</span>,
-                  dataIndex: 'values',
-                  width: 160,
-                  render: (values: Record<string, number>) => (
-                    <span style={{ fontSize: 11, color: '#64748B', whiteSpace: 'nowrap' }}>
-                      {values ? formatAlertValues(values) : '—'}
-                    </span>
-                  ),
-                },
-              ]}
-            />
+            <AlertsTable alerts={filteredAlerts} />
           </SCard>
         </div>
       </div>

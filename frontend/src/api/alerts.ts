@@ -6,7 +6,6 @@ export interface Alert {
   sessionId: string;
   measurementId: string;
   level: 'CRITICAL' | 'WARNING';
-  message: string;
   values: Record<string, number>;
   createdAt: string;
 }
