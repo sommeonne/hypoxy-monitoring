@@ -22,6 +22,14 @@ export class RedisPublisherService implements OnModuleInit, OnModuleDestroy {
     await this.client.publish(channel, message);
   }
 
+  async set(key: string, value: string): Promise<void> {
+    await this.client.set(key, value);
+  }
+
+  async del(key: string): Promise<void> {
+    await this.client.del(key);
+  }
+
   async onModuleDestroy() {
     await this.client.quit();
   }

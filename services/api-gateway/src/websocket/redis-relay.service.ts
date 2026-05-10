@@ -3,12 +3,11 @@ import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 import { EventsGateway } from './events.gateway';
 
-const CHANNELS = ['measurements', 'alerts', 'sessions', 'analysis'] as const;
+const CHANNELS = ['measurements', 'alerts', 'sessions'] as const;
 const CHANNEL_EVENT: Record<string, string> = {
   measurements: 'measurement:new',
   alerts: 'alert:new',
   sessions: 'session:updated',
-  analysis: 'analysis:result',
 };
 
 @Injectable()
@@ -37,9 +36,8 @@ export class RedisRelayService implements OnModuleInit, OnModuleDestroy {
       if (!event) return;
       try {
         const payload = JSON.parse(message);
-        // measurements and analysis contain raw patient vitals — emit only to the
-        // session room so other doctors' browsers never receive this data
-        if (channel === 'measurements' || channel === 'analysis') {
+
+        if (channel === 'measurements') {
           const sessionId = payload.sessionId;
           if (sessionId) {
             this.gateway.server.to(`session:${sessionId}`).emit(event, payload);

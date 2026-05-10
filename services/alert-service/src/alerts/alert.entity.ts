@@ -3,7 +3,6 @@ import { ApiProperty } from '@nestjs/swagger';
 
 export enum AlertLevel {
   CRITICAL = 'CRITICAL',
-  WARNING = 'WARNING',
 }
 
 @Entity('alerts')

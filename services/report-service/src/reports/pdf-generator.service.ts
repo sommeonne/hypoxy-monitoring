@@ -45,14 +45,13 @@ export class PdfGeneratorService {
         ['Weight (kg)',        patient.weight          != null ? String(patient.weight)                   : '—'],
         ['Baseline HR (bpm)',  patient.baselineHeartRate        != null ? String(patient.baselineHeartRate)        : '—'],
         ['Baseline RR (/min)', patient.baselineRespiratoryRate  != null ? String(patient.baselineRespiratoryRate)  : '—'],
-        ['Tidal Volume (mL)',  patient.tidalVolume     != null ? String(patient.tidalVolume)              : '—'],
+        ['Baseline TV (mL)',   patient.baselineTidalVolume != null ? String(patient.baselineTidalVolume) : '—'],
       ], y);
       y += 10;
 
       // Session
       y = this.section(doc, 'Session Details', y);
       const sessionRows: [string, string][] = [
-        ['Session ID', session.id],
         ['Status', session.status.toUpperCase()],
         ['Started', new Date(session.startedAt).toLocaleString()],
       ];

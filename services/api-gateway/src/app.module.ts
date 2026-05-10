@@ -1,6 +1,7 @@
 import { Module, MiddlewareConsumer, RequestMethod } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ThrottlerModule } from '@nestjs/throttler';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 import { JwtModule } from '@nestjs/jwt';
 import { LoggerModule } from 'nestjs-pino';
 import { HealthModule } from './health/health.module';
@@ -19,7 +20,7 @@ import { WebsocketModule } from './websocket/websocket.module';
             : undefined,
       },
     }),
-    ThrottlerModule.forRoot([{ ttl: 60000, limit: 100 }]),
+    ThrottlerModule.forRoot([{ ttl: 60000, limit: 200 }]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
@@ -30,6 +31,7 @@ import { WebsocketModule } from './websocket/websocket.module';
     HealthModule,
     WebsocketModule,
   ],
+  providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })
 export class AppModule {
   configure(consumer: MiddlewareConsumer) {

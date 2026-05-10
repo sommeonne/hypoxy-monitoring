@@ -5,11 +5,11 @@ export enum AlertLevel {
 
 export const THRESHOLDS = {
   spo2: {
-    critical: 80,
+    critical: 75,
   },
   heartRate: {
-    criticalMin: 45,
-    criticalMax: 130,
+    criticalMin: 40,
+    criticalMax: 150,
   },
   respiratoryRate: {
     criticalMin: 8,

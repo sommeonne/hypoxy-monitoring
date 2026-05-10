@@ -1,7 +1,6 @@
 import { Injectable, Logger, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Cron } from '@nestjs/schedule';
 import { DataFetcherService } from './data-fetcher.service';
 import { PdfGeneratorService } from './pdf-generator.service';
 import { ExcelGeneratorService } from './excel-generator.service';
@@ -24,7 +23,7 @@ export class ReportsService {
   private async fetchAndAuthorize(sessionId: string, doctorId: string) {
     const session = await this.dataFetcher.getSession(sessionId);
     if (session.doctorId !== doctorId) {
-      throw new ForbiddenException('Access denied: session belongs to another doctor');
+      throw new ForbiddenException('Access denied');
     }
     return session;
   }
@@ -106,7 +105,7 @@ export class ReportsService {
   async getSessionReports(sessionId: string, doctorId: string): Promise<Report[]> {
     const session = await this.dataFetcher.getSession(sessionId);
     if (session.doctorId !== doctorId) {
-      throw new ForbiddenException('Access denied: session belongs to another doctor');
+      throw new ForbiddenException('Access denied');
     }
     return this.reportRepo.find({
       where: { sessionId },
@@ -114,8 +113,4 @@ export class ReportsService {
     });
   }
 
-  @Cron('0 8 * * *')
-  async generateDailySummaries() {
-    this.logger.log('Running daily summary report generation');
-  }
 }

@@ -16,23 +16,29 @@ export class AnalysisService {
       anomalies.push(msg);
       level = AlertLevel.CRITICAL;
     };
-
-    if (measurement.spo2 < THRESHOLDS.spo2.critical) {
-      markCritical(`SpO2 critically low: ${measurement.spo2}%`);
+    
+    if (measurement.spo2 != null) {
+      if (measurement.spo2 < THRESHOLDS.spo2.critical) {
+        markCritical(`SpO2 critically low: ${measurement.spo2}%`);
+      }
     }
 
-    if (
-      measurement.heartRate < THRESHOLDS.heartRate.criticalMin ||
-      measurement.heartRate > THRESHOLDS.heartRate.criticalMax
-    ) {
-      markCritical(`Heart rate critically abnormal: ${measurement.heartRate} bpm`);
+    if (measurement.heartRate != null) {
+      if (
+        measurement.heartRate < THRESHOLDS.heartRate.criticalMin ||
+        measurement.heartRate > THRESHOLDS.heartRate.criticalMax
+      ) {
+        markCritical(`Heart rate critically abnormal: ${measurement.heartRate} bpm`);
+      }
     }
 
-    if (
-      measurement.respiratoryRate < THRESHOLDS.respiratoryRate.criticalMin ||
-      measurement.respiratoryRate > THRESHOLDS.respiratoryRate.criticalMax
-    ) {
-      markCritical(`Respiratory rate critically abnormal: ${measurement.respiratoryRate} breaths/min`);
+    if (measurement.respiratoryRate != null) {
+      if (
+        measurement.respiratoryRate < THRESHOLDS.respiratoryRate.criticalMin ||
+        measurement.respiratoryRate > THRESHOLDS.respiratoryRate.criticalMax
+      ) {
+        markCritical(`Respiratory rate critically abnormal: ${measurement.respiratoryRate} breaths/min`);
+      }
     }
 
     if (measurement.tidalVolume != null) {
@@ -51,15 +57,9 @@ export class AnalysisService {
     };
 
     if (level === AlertLevel.CRITICAL) {
+      this.logger.warn(`Critical alert detected for patient ${measurement.patientId}`);
       await this.sendAlert(result);
     }
-
-    await this.redisPublisher.publish('analysis', JSON.stringify({
-      measurementId: measurement.id,
-      patientId: measurement.patientId,
-      sessionId: measurement.sessionId,
-      level,
-    }));
 
     return result;
   }
@@ -71,15 +71,22 @@ export class AnalysisService {
     const refRR = req.baselineRespiratoryRate ?? req.firstRespiratoryRate ?? finalRespiratoryRate;
     const refTV = req.baselineTidalVolume ?? finalTidalVolume;
 
-    const hrChangePct = refHR > 0 ? Math.abs((finalHeartRate - refHR) / refHR) * 100 : 0;
-    const rrChangePct = refRR > 0 ? Math.abs((finalRespiratoryRate - refRR) / refRR) * 100 : 0;
-    const tvChangePct =
-      refTV != null && refTV > 0 && finalTidalVolume != null
-        ? Math.abs((finalTidalVolume - refTV) / refTV) * 100
-        : null;
+    const hrChangePct = (refHR != null && finalHeartRate != null && refHR > 0) 
+      ? Math.abs((finalHeartRate - refHR) / refHR) * 100 
+      : 0;
+
+    const rrChangePct = (refRR != null && finalRespiratoryRate != null && refRR > 0) 
+      ? Math.abs((finalRespiratoryRate - refRR) / refRR) * 100 
+      : 0;
+
+    const tvChangePct = (refTV != null && finalTidalVolume != null && refTV > 0)
+      ? Math.abs((finalTidalVolume - refTV) / refTV) * 100
+      : null;
 
     let resistance: string;
-    if (finalSpo2 > 85) {
+    if (finalSpo2 == null) {
+      resistance = 'Hypoxia tolerance unknown (no data)';
+    } else if (finalSpo2 > 85) {
       resistance = 'Hypoxia tolerance high';
     } else if (finalSpo2 >= 80) {
       resistance = 'Hypoxia tolerance normal';
@@ -93,9 +100,9 @@ export class AnalysisService {
     }
 
     const hrElevated = hrChangePct > 30;
-
-    const respiratoryElevated =
-      tvChangePct != null ? tvChangePct > 30 : rrChangePct > 30;
+    const rrElevated = rrChangePct > 30;
+    const tvElevated = tvChangePct != null && tvChangePct > 30;
+    const respiratoryElevated = rrElevated || tvElevated;
 
     let reaction: string;
     if (hrElevated && respiratoryElevated) reaction = 'hemodynamic and respiratory reaction elevated';
@@ -112,7 +119,7 @@ export class AnalysisService {
       sessionId: result.measurement.sessionId,
       measurementId: result.measurement.id,
       level: result.level,
-values: {
+      values: {
         spo2: result.measurement.spo2,
         heartRate: result.measurement.heartRate,
         respiratoryRate: result.measurement.respiratoryRate,

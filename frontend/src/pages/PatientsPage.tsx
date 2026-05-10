@@ -325,7 +325,7 @@ export default function PatientsPage() {
             </Form.Item>
             <Form.Item
               name="baselineTidalVolume"
-              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Baseline Tidal Volume (mL)</span>}
+              label={<span style={{ fontWeight: 500, fontSize: 13 }}>Baseline TV (mL)</span>}
             >
               <InputNumber style={{ width: '100%' }} min={0} max={2000} />
             </Form.Item>

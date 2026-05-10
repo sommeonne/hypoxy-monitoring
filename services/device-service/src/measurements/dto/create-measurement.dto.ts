@@ -8,7 +8,7 @@ export class CreateMeasurementDto {
   @Max(100)
   spo2: number;
 
-  @ApiProperty({ description: 'Heart rate bpm', minimum: 0, maximum: 300 })
+  @ApiProperty({ description: 'Heart rate in bpm', minimum: 0, maximum: 300 })
   @IsNumber()
   @Min(0)
   @Max(300)

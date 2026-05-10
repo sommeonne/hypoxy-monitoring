@@ -15,7 +15,6 @@ export class ExcelGeneratorService {
     workbook.creator = 'Hypoxy Monitoring System';
     workbook.created = new Date();
 
-    // Summary sheet
     const summarySheet = workbook.addWorksheet('Summary');
     summarySheet.columns = [
       { header: 'Field', key: 'field', width: 30 },
@@ -29,8 +28,7 @@ export class ExcelGeneratorService {
       { field: 'Weight (kg)',        value: patient.weight                 ?? 'N/A' },
       { field: 'Baseline HR (bpm)',  value: patient.baselineHeartRate      ?? 'N/A' },
       { field: 'Baseline RR (/min)', value: patient.baselineRespiratoryRate ?? 'N/A' },
-      { field: 'Tidal Volume (mL)',  value: patient.tidalVolume            ?? 'N/A' },
-      { field: 'Session ID', value: session.id },
+      { field: 'Baseline TV (mL)',   value: patient.baselineTidalVolume    ?? 'N/A' },
       { field: 'Started At', value: new Date(session.startedAt).toLocaleString() },
       {
         field: 'Ended At',

@@ -1,5 +1,6 @@
-import { Controller, Get, Post, Body, Param, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, ParseUUIDPipe, HttpCode, Res } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { Response } from 'express';
 import { MeasurementsService } from './measurements.service';
 import { CreateMeasurementDto } from './dto/create-measurement.dto';
 import { Measurement } from './measurement.entity';
@@ -13,10 +14,17 @@ export class MeasurementsController {
   constructor(private readonly measurementsService: MeasurementsService) {}
 
   @Post('measurements')
+  @HttpCode(200)
   @ApiOperation({ summary: 'Record a new measurement from device' })
-  @ApiResponse({ status: 201, type: Measurement })
-  create(@Body() dto: CreateMeasurementDto): Promise<Measurement> {
-    return this.measurementsService.create(dto);
+  @ApiResponse({ status: 200, type: Measurement })
+  @ApiResponse({ status: 204, description: 'No active session — measurement dropped' })
+  async create(@Body() dto: CreateMeasurementDto, @Res() res: Response): Promise<void> {
+    const result = await this.measurementsService.create(dto);
+    if (!result) {
+      res.status(204).send();
+    } else {
+      res.status(200).json(result);
+    }
   }
 
   @Get('measurements/:sessionId')

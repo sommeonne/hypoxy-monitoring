@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AnalysisService } from './analysis.service';
 import { AlertLevel, Measurement } from './thresholds';
-import { AlertsHttpService } from './alerts-http.service';
 import { RedisPublisherService } from './redis-publisher.service';
 
 describe('AnalysisService', () => {
@@ -14,7 +13,6 @@ describe('AnalysisService', () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AnalysisService,
-        { provide: AlertsHttpService, useValue: mockAlertsHttp },
         { provide: RedisPublisherService, useValue: mockRedisPublisher },
       ],
     }).compile();

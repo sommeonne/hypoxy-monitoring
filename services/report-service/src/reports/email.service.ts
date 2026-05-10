@@ -53,7 +53,6 @@ export class EmailService {
           <p>Please find attached the PDF report for your hypoxytherapy session conducted on <strong>${dateStr}</strong>.</p>
           ${conclusion ? `<p style="color: #64748B; font-size: 14px;">Conclusion: <strong style="color: #0F172A;">${conclusion}</strong></p>` : ''}
           <hr style="border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;" />
-          <p style="color: #94A3B8; font-size: 12px;">Session ID: ${sessionId}</p>
         </div>
       `,
       attachments: [

@@ -8,20 +8,23 @@ export class DataFetcherService {
   constructor(private readonly config: ConfigService) {}
 
   private get deviceUrl() {
-    return this.config.get('DEVICE_SERVICE_URL', 'http://device-service:3001');
+    return this.config.getOrThrow('DEVICE_SERVICE_URL');
   }
   private get patientUrl() {
-    return this.config.get('PATIENT_SERVICE_URL', 'http://patient-service:3002');
+    return this.config.getOrThrow('PATIENT_SERVICE_URL');
   }
   private get sessionUrl() {
-    return this.config.get('SESSION_SERVICE_URL', 'http://session-service:3005');
+    return this.config.getOrThrow('SESSION_SERVICE_URL');
   }
   private get alertUrl() {
-    return this.config.get('ALERT_SERVICE_URL', 'http://alert-service:3004');
+    return this.config.getOrThrow('ALERT_SERVICE_URL');
   }
 
   async getSession(sessionId: string): Promise<any> {
-    const res = await fetch(`${this.sessionUrl}/sessions/${sessionId}`);
+    const res = await fetch(`${this.sessionUrl}/sessions/${sessionId}`, {
+      headers: { 'x-user-role': 'doctor' },
+    });
+    if (!res.ok) throw new Error(`session-service returned ${res.status} for session ${sessionId}`);
     return res.json();
   }
 
@@ -29,6 +32,7 @@ export class DataFetcherService {
     const res = await fetch(`${this.patientUrl}/patients/${patientId}`, {
       headers: { 'x-user-role': 'doctor' },
     });
+    if (!res.ok) throw new Error(`patient-service returned ${res.status} for patient ${patientId}`);
     return res.json();
   }
 
@@ -36,6 +40,7 @@ export class DataFetcherService {
     const res = await fetch(`${this.deviceUrl}/devices/measurements/${sessionId}`, {
       headers: { 'x-user-role': 'doctor' },
     });
+    if (!res.ok) throw new Error(`device-service returned ${res.status} for session ${sessionId}`);
     return res.json();
   }
 
@@ -43,6 +48,7 @@ export class DataFetcherService {
     const res = await fetch(`${this.alertUrl}/alerts?sessionId=${sessionId}`, {
       headers: { 'x-user-role': 'doctor' },
     });
+    if (!res.ok) throw new Error(`alert-service returned ${res.status} for session ${sessionId}`);
     return res.json();
   }
 }

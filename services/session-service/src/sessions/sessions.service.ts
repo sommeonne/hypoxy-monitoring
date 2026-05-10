@@ -23,6 +23,10 @@ export class SessionsService {
     });
     const saved = await this.repo.save(session);
     await this.redisPublisher.publish('sessions', JSON.stringify(saved));
+    await this.redisPublisher.set(
+      'current_session',
+      JSON.stringify({ id: saved.id, doctorId: saved.doctorId, patientId: saved.patientId }),
+    );
     return saved;
   }
 
@@ -56,6 +60,7 @@ export class SessionsService {
 
     const updated = await this.repo.save(session);
     await this.redisPublisher.publish('sessions', JSON.stringify(updated));
+    await this.redisPublisher.del('current_session');
     return updated;
   }
 

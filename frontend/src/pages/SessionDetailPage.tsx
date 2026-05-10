@@ -232,7 +232,10 @@ export default function SessionDetailPage() {
         conclusion,
       });
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['session', id] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['session', id] });
+      queryClient.invalidateQueries({ queryKey: ['activeSessions'] });
+    },
   });
 
   useEffect(() => {
