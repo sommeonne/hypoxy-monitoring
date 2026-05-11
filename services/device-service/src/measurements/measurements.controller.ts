@@ -17,9 +17,13 @@ export class MeasurementsController {
   @HttpCode(200)
   @ApiOperation({ summary: 'Record a new measurement from device' })
   @ApiResponse({ status: 200, type: Measurement })
-  @ApiResponse({ status: 204, description: 'No active session — measurement dropped' })
-  async create(@Body() dto: CreateMeasurementDto, @Res() res: Response): Promise<void> {
-    const result = await this.measurementsService.create(dto);
+  @ApiResponse({ status: 204, description: 'No active session' })
+  async create(
+    @Body() dto: CreateMeasurementDto,
+    @Headers('x-user-id') doctorId: string,
+    @Res() res: Response,
+  ): Promise<void> {
+    const result = await this.measurementsService.create(dto, doctorId);
     if (!result) {
       res.status(204).send();
     } else {
@@ -37,6 +41,14 @@ export class MeasurementsController {
   ): Promise<Measurement[]> {
     await this.measurementsService.verifySessionAccess(sessionId, doctorId, role);
     return this.measurementsService.findBySession(sessionId);
+  }
+
+  @Get('stats/:sessionId')
+  @ApiOperation({ summary: 'Get aggregate stats for a session' })
+  getSessionStats(
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+  ) {
+    return this.measurementsService.getSessionStats(sessionId);
   }
 
   @Get('latest/:patientId')

@@ -4,7 +4,6 @@ import {
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { SessionsService } from './sessions.service';
 import { CreateSessionDto } from './dto/create-session.dto';
-import { EndSessionDto } from './dto/end-session.dto';
 import { UpdateNotesDto } from './dto/update-notes.dto';
 import { Session } from './session.entity';
 import { Roles } from '../common/roles.decorator';
@@ -27,14 +26,13 @@ export class SessionsController {
   }
 
   @Put(':id/end')
-  @ApiOperation({ summary: 'End a therapy session' })
+  @ApiOperation({ summary: 'End a therapy session — session-service orchestrates stats collection' })
   @ApiResponse({ status: 200, type: Session })
   end(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() dto: EndSessionDto,
     @Headers('x-user-id') doctorId: string,
   ): Promise<Session> {
-    return this.sessionsService.end(id, dto, doctorId);
+    return this.sessionsService.end(id, doctorId);
   }
 
   @Get('active')

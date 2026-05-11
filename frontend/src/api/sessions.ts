@@ -42,8 +42,7 @@ export const startSession = (data: {
   o2Percentage?: number;
   plannedDurationSeconds?: number;
 }) => api.post<Session>('/sessions', data);
-export type EndSessionData = Partial<Omit<SessionSummary, 'durationMinutes'>> & { conclusion?: string };
-export const endSession = (id: string, data: EndSessionData = {}) =>
-  api.put<Session>(`/sessions/${id}/end`, data);
+export const endSession = (id: string) =>
+  api.put<Session>(`/sessions/${id}/end`, {});
 export const updateSessionNotes = (id: string, notes: string) =>
   api.patch<Session>(`/sessions/${id}/notes`, { notes });

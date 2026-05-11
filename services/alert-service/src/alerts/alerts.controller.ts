@@ -38,6 +38,14 @@ export class AlertsController {
     return this.alertsService.findAll(patientId, sessionId);
   }
 
+  @Get('count/:sessionId')
+  @ApiOperation({ summary: 'Get alert count for a session (internal use by session-service)' })
+  countBySession(
+    @Param('sessionId', ParseUUIDPipe) sessionId: string,
+  ): Promise<{ count: number }> {
+    return this.alertsService.countBySession(sessionId);
+  }
+
   @Get('patient/:patientId')
   @ApiOperation({ summary: 'Get alerts for a patient' })
   @ApiResponse({ status: 200, type: [Alert] })

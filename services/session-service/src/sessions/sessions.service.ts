@@ -1,17 +1,30 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { ConfigService } from '@nestjs/config';
 import { Session, SessionStatus, SessionSummary } from './session.entity';
 import { CreateSessionDto } from './dto/create-session.dto';
-import { EndSessionDto } from './dto/end-session.dto';
 import { RedisPublisherService } from '../redis/redis-publisher.service';
+
+interface DeviceStats {
+  totalMeasurements: number;
+  avgSpo2: number; minSpo2: number; maxSpo2: number;
+  avgHeartRate: number; minHeartRate: number; maxHeartRate: number;
+  avgRespiratoryRate: number; minRespiratoryRate: number; maxRespiratoryRate: number;
+  avgTidalVolume: number; minTidalVolume: number; maxTidalVolume: number;
+  firstMeasurement: { spo2: number; heartRate: number; respiratoryRate: number; tidalVolume: number };
+  lastMeasurement: { spo2: number; heartRate: number; respiratoryRate: number; tidalVolume: number };
+}
 
 @Injectable()
 export class SessionsService {
+  private readonly logger = new Logger(SessionsService.name);
+
   constructor(
     @InjectRepository(Session)
     private readonly repo: Repository<Session>,
     private readonly redisPublisher: RedisPublisherService,
+    private readonly config: ConfigService,
   ) {}
 
   async create(dto: CreateSessionDto, doctorId: string): Promise<Session> {
@@ -30,39 +43,83 @@ export class SessionsService {
     return saved;
   }
 
-  async end(id: string, dto: EndSessionDto, doctorId?: string): Promise<Session> {
+  async end(id: string, doctorId?: string): Promise<Session> {
     const session = await this.findOne(id, doctorId);
     if (session.status !== SessionStatus.ACTIVE) {
       throw new BadRequestException('Session is not active');
     }
 
+    const internalHeaders = { 'x-user-id': doctorId ?? '', 'x-user-role': 'doctor' };
+
+    const deviceBase = this.config.get('DEVICE_SERVICE_URL', 'http://device-service:3001');
+    const alertBase = this.config.get('ALERT_SERVICE_URL', 'http://alert-service:3004');
+    const patientBase = this.config.get('PATIENT_SERVICE_URL', 'http://patient-service:3002');
+    const analysisBase = this.config.get('ANALYSIS_SERVICE_URL', 'http://analysis-service:3003');
+
+    const [statsRes, alertCountRes, patientRes] = await Promise.all([
+      fetch(`${deviceBase}/devices/stats/${id}`, { headers: internalHeaders }),
+      fetch(`${alertBase}/alerts/count/${id}`, { headers: internalHeaders }),
+      fetch(`${patientBase}/patients/${session.patientId}`, { headers: internalHeaders }),
+    ]);
+
+    const stats: DeviceStats = statsRes.ok ? await statsRes.json() : this.emptyStats();
+    const alertCount: number = alertCountRes.ok ? (await alertCountRes.json()).count : 0;
+    const patient = patientRes.ok ? await patientRes.json() : null;
+
+    const concludeBody = {
+      finalSpo2: stats.lastMeasurement?.spo2 ?? null,
+      finalHeartRate: stats.lastMeasurement?.heartRate ?? null,
+      finalRespiratoryRate: stats.lastMeasurement?.respiratoryRate ?? null,
+      finalTidalVolume: stats.lastMeasurement?.tidalVolume ?? null,
+      o2Percentage: session.o2Percentage ?? null,
+      firstHeartRate: stats.firstMeasurement?.heartRate ?? null,
+      firstRespiratoryRate: stats.firstMeasurement?.respiratoryRate ?? null,
+      baselineHeartRate: patient?.baselineHeartRate ?? null,
+      baselineRespiratoryRate: patient?.baselineRespiratoryRate ?? null,
+      baselineTidalVolume: patient?.baselineTidalVolume ?? null,
+    };
+
+    let conclusion: string | undefined;
+    try {
+      const concludeRes = await fetch(`${analysisBase}/analysis/conclude`, {
+        method: 'POST',
+        headers: { ...internalHeaders, 'Content-Type': 'application/json' },
+        body: JSON.stringify(concludeBody),
+      });
+      if (concludeRes.ok) {
+        const data = await concludeRes.json();
+        conclusion = data.conclusion;
+      }
+    } catch (err) {
+      this.logger.warn(`Could not fetch conclusion from analysis-service: ${err}`);
+    }
+
     const endedAt = new Date();
-    const durationMs = endedAt.getTime() - session.startedAt.getTime();
-    const durationMinutes = Math.round(durationMs / 60000);
+    const durationMinutes = Math.round((endedAt.getTime() - session.startedAt.getTime()) / 60000);
 
     const summary: SessionSummary = {
       durationMinutes,
-      totalMeasurements: dto.totalMeasurements ?? 0,
-      alertCount: dto.alertCount ?? 0,
-      avgSpo2: dto.avgSpo2 ?? 0,
-      minSpo2: dto.minSpo2 ?? 0,
-      maxSpo2: dto.maxSpo2 ?? 0,
-      avgHeartRate: dto.avgHeartRate ?? 0,
-      minHeartRate: dto.minHeartRate ?? 0,
-      maxHeartRate: dto.maxHeartRate ?? 0,
-      avgRespiratoryRate: dto.avgRespiratoryRate ?? 0,
-      minRespiratoryRate: dto.minRespiratoryRate ?? 0,
-      maxRespiratoryRate: dto.maxRespiratoryRate ?? 0,
-      avgTidalVolume: dto.avgTidalVolume ?? 0,
-      minTidalVolume: dto.minTidalVolume ?? 0,
-      maxTidalVolume: dto.maxTidalVolume ?? 0,
+      totalMeasurements: stats.totalMeasurements,
+      alertCount,
+      avgSpo2: stats.avgSpo2,
+      minSpo2: stats.minSpo2,
+      maxSpo2: stats.maxSpo2,
+      avgHeartRate: stats.avgHeartRate,
+      minHeartRate: stats.minHeartRate,
+      maxHeartRate: stats.maxHeartRate,
+      avgRespiratoryRate: stats.avgRespiratoryRate,
+      minRespiratoryRate: stats.minRespiratoryRate,
+      maxRespiratoryRate: stats.maxRespiratoryRate,
+      avgTidalVolume: stats.avgTidalVolume,
+      minTidalVolume: stats.minTidalVolume,
+      maxTidalVolume: stats.maxTidalVolume,
     };
 
     Object.assign(session, {
       endedAt,
       status: SessionStatus.COMPLETED,
       summary,
-      ...(dto.conclusion != null && { conclusion: dto.conclusion }),
+      ...(conclusion != null && { conclusion }),
     });
 
     const updated = await this.repo.save(session);
@@ -95,5 +152,17 @@ export class SessionsService {
     const session = await this.findOne(id, doctorId);
     session.notes = notes ?? null!;
     return this.repo.save(session);
+  }
+
+  private emptyStats(): DeviceStats {
+    return {
+      totalMeasurements: 0,
+      avgSpo2: 0, minSpo2: 0, maxSpo2: 0,
+      avgHeartRate: 0, minHeartRate: 0, maxHeartRate: 0,
+      avgRespiratoryRate: 0, minRespiratoryRate: 0, maxRespiratoryRate: 0,
+      avgTidalVolume: null, minTidalVolume: null, maxTidalVolume: null,
+      firstMeasurement: null,
+      lastMeasurement: null,
+    };
   }
 }

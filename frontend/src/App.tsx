@@ -2,7 +2,6 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from 'antd';
 import AppHeader from './components/AppHeader';
-import DashboardPage from './pages/DashboardPage';
 import PatientsPage from './pages/PatientsPage';
 import PatientDetailPage from './pages/PatientDetailPage';
 import SessionDetailPage from './pages/SessionDetailPage';
@@ -20,7 +19,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   if (!isLoggedIn()) return <Navigate to="/login" replace />;
-  if (!isAdmin()) return <Navigate to="/dashboard" replace />;
+  if (!isAdmin()) return <Navigate to="/patients" replace />;
   return <>{children}</>;
 }
 
@@ -45,7 +44,6 @@ export default function App() {
                 <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 40px', width: '100%' }}>
                   <Routes>
                     <Route path="/" element={<Navigate to={isAdmin() ? '/users' : '/patients'} replace />} />
-                    {/*<Route path="/dashboard" element={<DoctorRoute><DashboardPage /></DoctorRoute>} />*/}
                     <Route path="/patients" element={<DoctorRoute><PatientsPage /></DoctorRoute>} />
                     <Route path="/patients/:id" element={<DoctorRoute><PatientDetailPage /></DoctorRoute>} />
                     <Route path="/sessions/:id" element={<DoctorRoute><SessionDetailPage /></DoctorRoute>} />

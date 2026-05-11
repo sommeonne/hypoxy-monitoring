@@ -39,7 +39,7 @@ export class AppModule {
       { path: 'api/auth*', method: RequestMethod.ALL },
       { path: 'api/users*', method: RequestMethod.ALL },
       { path: 'api/specializations*', method: RequestMethod.ALL },
-      { path: 'api/devices*', method: RequestMethod.ALL },
+      { path: 'api/device*', method: RequestMethod.ALL },
       { path: 'api/patients*', method: RequestMethod.ALL },
       { path: 'api/groups*', method: RequestMethod.ALL },
       { path: 'api/analysis*', method: RequestMethod.ALL },

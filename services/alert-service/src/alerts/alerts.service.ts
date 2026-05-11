@@ -29,6 +29,11 @@ export class AlertsService {
     return this.repo.find({ where, order: { createdAt: 'DESC' } });
   }
 
+  async countBySession(sessionId: string): Promise<{ count: number }> {
+    const count = await this.repo.count({ where: { sessionId } });
+    return { count };
+  }
+
   findByPatient(patientId: string): Promise<Alert[]> {
     return this.repo.find({ where: { patientId }, order: { createdAt: 'DESC' } });
   }

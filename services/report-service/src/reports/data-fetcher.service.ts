@@ -8,45 +8,49 @@ export class DataFetcherService {
   constructor(private readonly config: ConfigService) {}
 
   private get deviceUrl() {
-    return this.config.getOrThrow('DEVICE_SERVICE_URL');
+    return this.config.get('DEVICE_SERVICE_URL', 'http://device-service:3001');
   }
   private get patientUrl() {
-    return this.config.getOrThrow('PATIENT_SERVICE_URL');
+    return this.config.get('PATIENT_SERVICE_URL', 'http://patient-service:3002');
   }
   private get sessionUrl() {
-    return this.config.getOrThrow('SESSION_SERVICE_URL');
+    return this.config.get('SESSION_SERVICE_URL', 'http://session-service:3005');
   }
   private get alertUrl() {
-    return this.config.getOrThrow('ALERT_SERVICE_URL');
+    return this.config.get('ALERT_SERVICE_URL', 'http://alert-service:3004');
   }
 
-  async getSession(sessionId: string): Promise<any> {
+  private authHeaders(doctorId: string) {
+    return { 'x-user-id': doctorId, 'x-user-role': 'doctor' };
+  }
+
+  async getSession(sessionId: string, doctorId: string): Promise<any> {
     const res = await fetch(`${this.sessionUrl}/sessions/${sessionId}`, {
-      headers: { 'x-user-role': 'doctor' },
+      headers: this.authHeaders(doctorId),
     });
     if (!res.ok) throw new Error(`session-service returned ${res.status} for session ${sessionId}`);
     return res.json();
   }
 
-  async getPatient(patientId: string): Promise<any> {
+  async getPatient(patientId: string, doctorId: string): Promise<any> {
     const res = await fetch(`${this.patientUrl}/patients/${patientId}`, {
-      headers: { 'x-user-role': 'doctor' },
+      headers: this.authHeaders(doctorId),
     });
     if (!res.ok) throw new Error(`patient-service returned ${res.status} for patient ${patientId}`);
     return res.json();
   }
 
-  async getMeasurements(sessionId: string): Promise<any[]> {
-    const res = await fetch(`${this.deviceUrl}/devices/measurements/${sessionId}`, {
-      headers: { 'x-user-role': 'doctor' },
+  async getMeasurements(sessionId: string, doctorId: string): Promise<any[]> {
+    const res = await fetch(`${this.deviceUrl}/device/measurements/${sessionId}`, {
+      headers: this.authHeaders(doctorId),
     });
     if (!res.ok) throw new Error(`device-service returned ${res.status} for session ${sessionId}`);
     return res.json();
   }
 
-  async getAlertsBySession(sessionId: string): Promise<any[]> {
+  async getAlertsBySession(sessionId: string, doctorId: string): Promise<any[]> {
     const res = await fetch(`${this.alertUrl}/alerts?sessionId=${sessionId}`, {
-      headers: { 'x-user-role': 'doctor' },
+      headers: this.authHeaders(doctorId),
     });
     if (!res.ok) throw new Error(`alert-service returned ${res.status} for session ${sessionId}`);
     return res.json();

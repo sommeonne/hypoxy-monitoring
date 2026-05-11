@@ -25,8 +25,8 @@ export class MeasurementsService {
     private readonly config: ConfigService,
   ) {}
 
-  async create(dto: CreateMeasurementDto): Promise<Measurement | null> {
-    const session = await this.resolveCurrentSession();
+  async create(dto: CreateMeasurementDto, doctorId: string): Promise<Measurement | null> {
+    const session = await this.resolveDoctorsSession(doctorId);
     if (!session) return null;
 
     const measurement = this.measurementRepo.create({
@@ -51,6 +51,60 @@ export class MeasurementsService {
       where: { sessionId },
       order: { createdAt: 'DESC' },
     });
+  }
+
+  async getSessionStats(sessionId: string): Promise<{
+    totalMeasurements: number;
+    avgSpo2: number; minSpo2: number; maxSpo2: number;
+    avgHeartRate: number; minHeartRate: number; maxHeartRate: number;
+    avgRespiratoryRate: number; minRespiratoryRate: number; maxRespiratoryRate: number;
+    avgTidalVolume: number | null; minTidalVolume: number | null; maxTidalVolume: number | null;
+    firstMeasurement: Measurement | null;
+    lastMeasurement: Measurement | null;
+  }> {
+    const raw = await this.measurementRepo
+      .createQueryBuilder('m')
+      .select('COUNT(*)', 'total')
+      .addSelect('AVG(m.spo2)', 'avgSpo2')
+      .addSelect('MIN(m.spo2)', 'minSpo2')
+      .addSelect('MAX(m.spo2)', 'maxSpo2')
+      .addSelect('AVG(m.heartRate)', 'avgHeartRate')
+      .addSelect('MIN(m.heartRate)', 'minHeartRate')
+      .addSelect('MAX(m.heartRate)', 'maxHeartRate')
+      .addSelect('AVG(m.respiratoryRate)', 'avgRespiratoryRate')
+      .addSelect('MIN(m.respiratoryRate)', 'minRespiratoryRate')
+      .addSelect('MAX(m.respiratoryRate)', 'maxRespiratoryRate')
+      .addSelect('AVG(m.tidalVolume)', 'avgTidalVolume')
+      .addSelect('MIN(m.tidalVolume)', 'minTidalVolume')
+      .addSelect('MAX(m.tidalVolume)', 'maxTidalVolume')
+      .where('m.sessionId = :sessionId', { sessionId })
+      .getRawOne();
+
+    const parse = (v: string | null) => (v != null ? parseFloat(v) : null);
+    const total = parseInt(raw?.total ?? '0', 10);
+
+    const [firstMeasurement, lastMeasurement] = await Promise.all([
+      this.measurementRepo.findOne({ where: { sessionId }, order: { createdAt: 'ASC' } }),
+      this.measurementRepo.findOne({ where: { sessionId }, order: { createdAt: 'DESC' } }),
+    ]);
+
+    return {
+      totalMeasurements: total,
+      avgSpo2: parse(raw?.avgSpo2) ?? 0,
+      minSpo2: parse(raw?.minSpo2) ?? 0,
+      maxSpo2: parse(raw?.maxSpo2) ?? 0,
+      avgHeartRate: parse(raw?.avgHeartRate) ?? 0,
+      minHeartRate: parse(raw?.minHeartRate) ?? 0,
+      maxHeartRate: parse(raw?.maxHeartRate) ?? 0,
+      avgRespiratoryRate: parse(raw?.avgRespiratoryRate) ?? 0,
+      minRespiratoryRate: parse(raw?.minRespiratoryRate) ?? 0,
+      maxRespiratoryRate: parse(raw?.maxRespiratoryRate) ?? 0,
+      avgTidalVolume: parse(raw?.avgTidalVolume),
+      minTidalVolume: parse(raw?.minTidalVolume),
+      maxTidalVolume: parse(raw?.maxTidalVolume),
+      firstMeasurement,
+      lastMeasurement,
+    };
   }
 
   async findLatestByPatient(patientId: string): Promise<Measurement | null> {
@@ -84,8 +138,8 @@ export class MeasurementsService {
     if (!res.ok) throw new ForbiddenException('Access denied');
   }
 
-  private async resolveCurrentSession(): Promise<ActiveSession | null> {
-    const raw = await this.redisPublisher.get('current_session');
+  private async resolveDoctorsSession(doctorId: string): Promise<ActiveSession | null> {
+    const raw = await this.redisPublisher.get(`session:doctor:${doctorId}`);
     if (!raw) return null;
     return JSON.parse(raw) as ActiveSession;
   }

@@ -37,7 +37,7 @@ export class ExcelGeneratorService {
       { field: 'Status', value: session.status },
       { field: 'Duration (min)',            value: session.summary?.durationMinutes ?? 'N/A' },
       { field: 'Total Measurements',        value: session.summary?.totalMeasurements ?? measurements.length },
-      { field: 'Alert Count',               value: session.summary?.alertCount ?? alerts.length },
+      { field: 'Critical Alerts',            value: alerts.filter((a) => a.level === 'CRITICAL').length },
       { field: 'Avg SpO2 (%)',              value: session.summary?.avgSpo2?.toFixed(1) ?? 'N/A' },
       { field: 'Min SpO2 (%)',              value: session.summary?.minSpo2?.toFixed(1) ?? 'N/A' },
       { field: 'Max SpO2 (%)',              value: session.summary?.maxSpo2?.toFixed(1) ?? 'N/A' },

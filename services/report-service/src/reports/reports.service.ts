@@ -21,7 +21,7 @@ export class ReportsService {
   ) {}
 
   private async fetchAndAuthorize(sessionId: string, doctorId: string) {
-    const session = await this.dataFetcher.getSession(sessionId);
+    const session = await this.dataFetcher.getSession(sessionId, doctorId);
     if (session.doctorId !== doctorId) {
       throw new ForbiddenException('Access denied');
     }
@@ -31,10 +31,10 @@ export class ReportsService {
   async generateSessionPdf(sessionId: string, doctorId: string): Promise<Buffer> {
     const session = await this.fetchAndAuthorize(sessionId, doctorId);
     const [measurements, alerts] = await Promise.all([
-      this.dataFetcher.getMeasurements(sessionId),
-      this.dataFetcher.getAlertsBySession(sessionId),
+      this.dataFetcher.getMeasurements(sessionId, doctorId),
+      this.dataFetcher.getAlertsBySession(sessionId, doctorId),
     ]);
-    const patient = await this.dataFetcher.getPatient(session.patientId);
+    const patient = await this.dataFetcher.getPatient(session.patientId, doctorId);
     const buffer = await this.pdfGenerator.generateSessionReport(session, patient, measurements, alerts);
 
     await this.reportRepo.save(this.reportRepo.create({
@@ -51,10 +51,10 @@ export class ReportsService {
   async generateSessionExcel(sessionId: string, doctorId: string): Promise<Buffer> {
     const session = await this.fetchAndAuthorize(sessionId, doctorId);
     const [measurements, alerts] = await Promise.all([
-      this.dataFetcher.getMeasurements(sessionId),
-      this.dataFetcher.getAlertsBySession(sessionId),
+      this.dataFetcher.getMeasurements(sessionId, doctorId),
+      this.dataFetcher.getAlertsBySession(sessionId, doctorId),
     ]);
-    const patient = await this.dataFetcher.getPatient(session.patientId);
+    const patient = await this.dataFetcher.getPatient(session.patientId, doctorId);
     const buffer = await this.excelGenerator.generateSessionReport(session, patient, measurements, alerts);
 
     await this.reportRepo.save(this.reportRepo.create({
@@ -71,10 +71,10 @@ export class ReportsService {
   async sendSessionReportEmail(sessionId: string, doctorId: string): Promise<void> {
     const session = await this.fetchAndAuthorize(sessionId, doctorId);
     const [measurements, alerts] = await Promise.all([
-      this.dataFetcher.getMeasurements(sessionId),
-      this.dataFetcher.getAlertsBySession(sessionId),
+      this.dataFetcher.getMeasurements(sessionId, doctorId),
+      this.dataFetcher.getAlertsBySession(sessionId, doctorId),
     ]);
-    const patient = await this.dataFetcher.getPatient(session.patientId);
+    const patient = await this.dataFetcher.getPatient(session.patientId, doctorId);
 
     if (!patient.email) {
       throw new BadRequestException('Patient does not have an email address on file');
@@ -103,7 +103,7 @@ export class ReportsService {
   }
 
   async getSessionReports(sessionId: string, doctorId: string): Promise<Report[]> {
-    const session = await this.dataFetcher.getSession(sessionId);
+    const session = await this.dataFetcher.getSession(sessionId, doctorId);
     if (session.doctorId !== doctorId) {
       throw new ForbiddenException('Access denied');
     }

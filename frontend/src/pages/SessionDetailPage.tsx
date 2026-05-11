@@ -12,7 +12,6 @@ import {
 } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSession, endSession, updateSessionNotes } from '../api/sessions';
-import { concludeSession } from '../api/analysis';
 import { fetchSessionMeasurements, Measurement } from '../api/measurements';
 import { fetchAlerts, Alert } from '../api/alerts';
 import { fetchPatient } from '../api/patients';
@@ -20,15 +19,6 @@ import { useSocket } from '../hooks/useSocket';
 import MeasurementChart from '../components/MeasurementChart';
 import AlertsTable from '../components/AlertsTable';
 
-
-// ─── Stat helpers ─────────────────────────────────────────────────────────────
-
-function avg(data: Measurement[], fn: (m: Measurement) => number): number {
-  return data.reduce((s, m) => s + fn(m), 0) / data.length;
-}
-function r(n: number): number {
-  return Math.round(n * 10) / 10;
-}
 
 type ChartTabKey = 'spo2' | 'heartRate' | 'respRate' | 'o2' | 'tidalVolume';
 
@@ -208,43 +198,7 @@ export default function SessionDetailPage() {
   });
 
   const endMutation = useMutation({
-    mutationFn: async () => {
-      const data = liveData.length > 0 ? liveData : measurements;
-      if (data.length === 0) {
-        return endSession(id!, { totalMeasurements: 0, alertCount: alerts.length });
-      }
-      const latest = data[0];
-      const first = data[data.length - 1];
-      const { conclusion } = await concludeSession({
-        finalSpo2: latest.spo2,
-        finalHeartRate: latest.heartRate,
-        finalRespiratoryRate: latest.respiratoryRate,
-        finalTidalVolume: latest.tidalVolume ?? undefined,
-        o2Percentage: session?.o2Percentage,
-        firstHeartRate: first.heartRate,
-        firstRespiratoryRate: first.respiratoryRate,
-        baselineHeartRate: patient?.baselineHeartRate ?? undefined,
-        baselineRespiratoryRate: patient?.baselineRespiratoryRate ?? undefined,
-        baselineTidalVolume: patient?.baselineTidalVolume ?? undefined,
-      });
-      return endSession(id!, {
-        totalMeasurements: data.length,
-        alertCount: alerts.length,
-        avgSpo2: r(avg(data, (m) => m.spo2)),
-        minSpo2: Math.min(...data.map((m) => m.spo2)),
-        maxSpo2: Math.max(...data.map((m) => m.spo2)),
-        avgHeartRate: r(avg(data, (m) => m.heartRate)),
-        minHeartRate: Math.min(...data.map((m) => m.heartRate)),
-        maxHeartRate: Math.max(...data.map((m) => m.heartRate)),
-        avgRespiratoryRate: r(avg(data, (m) => m.respiratoryRate)),
-        minRespiratoryRate: Math.min(...data.map((m) => m.respiratoryRate)),
-        maxRespiratoryRate: Math.max(...data.map((m) => m.respiratoryRate)),
-        avgTidalVolume: r(avg(data, (m) => m.tidalVolume ?? 0)),
-        minTidalVolume: Math.min(...data.map((m) => m.tidalVolume ?? 0)),
-        maxTidalVolume: Math.max(...data.map((m) => m.tidalVolume ?? 0)),
-        conclusion,
-      });
-    },
+    mutationFn: () => endSession(id!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['session', id] });
       queryClient.invalidateQueries({ queryKey: ['activeSessions'] });

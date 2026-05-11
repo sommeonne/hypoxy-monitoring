@@ -63,14 +63,11 @@ export class PdfGeneratorService {
       // Summary
       if (session.summary) {
         const critical = alerts.filter((a) => a.level === 'CRITICAL').length;
-        const warning = alerts.filter((a) => a.level === 'WARNING').length;
         y = this.section(doc, 'Summary Statistics', y);
         y = this.kvRows(doc, [
           ['Duration', `${session.summary.durationMinutes} min`],
           ['Total Measurements', String(session.summary.totalMeasurements ?? measurements.length)],
-          ['Total Alerts', String(alerts.length)],
-          ['Critical', String(critical)],
-          ['Warning', String(warning)],
+          ['Critical Alerts', String(critical)],
           ['Avg SpO2', `${session.summary.avgSpo2?.toFixed(1) ?? '—'}%`],
           ['Min SpO2', `${session.summary.minSpo2?.toFixed(1) ?? '—'}%`],
           ['Max SpO2', `${session.summary.maxSpo2?.toFixed(1) ?? '—'}%`],

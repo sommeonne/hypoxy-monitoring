@@ -1,7 +1,6 @@
 import React, { useMemo } from 'react';
 import { Layout, Menu, Avatar, Dropdown } from 'antd';
 import {
-  MonitorOutlined,
   TeamOutlined,
   MedicineBoxOutlined,
   SettingOutlined,
@@ -56,7 +55,6 @@ export default function AppHeader() {
         { key: '/admin-settings', icon: <SettingOutlined />, label: 'Admin Settings' },
       ]
     : [
-        { key: '/dashboard', icon: <MonitorOutlined />, label: 'Dashboard' },
         { key: '/patients', icon: <TeamOutlined />, label: 'Patients' },
       ];
 
@@ -104,7 +102,7 @@ export default function AppHeader() {
             minWidth: 180,
             flexShrink: 0,
           }}
-          onClick={() => navigate(isAdmin() ? '/users' : '/dashboard')}
+          onClick={() => navigate(isAdmin() ? '/users' : '/patients')}
         >
           <HeartPulseIcon />
           <span

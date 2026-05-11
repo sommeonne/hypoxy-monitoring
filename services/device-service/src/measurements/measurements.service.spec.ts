@@ -30,7 +30,7 @@ describe('MeasurementsService', () => {
 
   it('should be defined', () => expect(service).toBeDefined());
 
-  it('should read current_session from Redis, save and publish', async () => {
+  it('should read session:doctor:<doctorId> from Redis, save and publish', async () => {
     mockRedis.get.mockResolvedValue(JSON.stringify(mockSession));
 
     const dto = { spo2: 97, heartRate: 72, respiratoryRate: 16 };
@@ -44,17 +44,17 @@ describe('MeasurementsService', () => {
     mockCache.set.mockResolvedValue(undefined);
     mockRedis.publish.mockResolvedValue(undefined);
 
-    const result = await service.create(dto as any);
+    const result = await service.create(dto as any, mockSession.doctorId);
 
-    expect(mockRedis.get).toHaveBeenCalledWith('current_session');
+    expect(mockRedis.get).toHaveBeenCalledWith(`session:doctor:${mockSession.doctorId}`);
     expect(result).toEqual(saved);
     expect(mockRedis.publish).toHaveBeenCalledWith('measurements', JSON.stringify(saved));
   });
 
-  it('should return null when current_session is absent from Redis', async () => {
+  it('should return null when no active session for doctor in Redis', async () => {
     mockRedis.get.mockResolvedValue(null);
 
-    const result = await service.create({ spo2: 97, heartRate: 72, respiratoryRate: 16 } as any);
+    const result = await service.create({ spo2: 97, heartRate: 72, respiratoryRate: 16 } as any, mockSession.doctorId);
     expect(result).toBeNull();
   });
 });

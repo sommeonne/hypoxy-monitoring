@@ -13,7 +13,7 @@ export interface Measurement {
 }
 
 export const fetchSessionMeasurements = (sessionId: string) =>
-  api.get<Measurement[]>(`/devices/measurements/${sessionId}`);
+  api.get<Measurement[]>(`/device/measurements/${sessionId}`);
 
 export const fetchLatestMeasurement = (patientId: string) =>
-  api.get<Measurement>(`/devices/latest/${patientId}`);
+  api.get<Measurement>(`/device/latest/${patientId}`);

@@ -9,7 +9,7 @@ const ROUTE_MAP: Record<string, string> = {
   '/api/auth': 'USER_SERVICE_URL',
   '/api/users': 'USER_SERVICE_URL',
   '/api/specializations': 'USER_SERVICE_URL',
-  '/api/devices': 'DEVICE_SERVICE_URL',
+  '/api/device': 'DEVICE_SERVICE_URL',
   '/api/patients': 'PATIENT_SERVICE_URL',
   '/api/groups': 'PATIENT_SERVICE_URL',
   '/api/analysis': 'ANALYSIS_SERVICE_URL',

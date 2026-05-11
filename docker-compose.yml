@@ -123,6 +123,8 @@ services:
     environment:
       <<: *common-env
       PORT: 3001
+      SESSION_SERVICE_URL: ${SESSION_SERVICE_URL:-http://session-service:3005}
+      PATIENT_SERVICE_URL: ${PATIENT_SERVICE_URL:-http://patient-service:3002}
     networks:
       - hypoxy-net
     healthcheck:
@@ -175,6 +177,8 @@ services:
     environment:
       <<: *common-env
       PORT: 3004
+      SESSION_SERVICE_URL: ${SESSION_SERVICE_URL:-http://session-service:3005}
+      PATIENT_SERVICE_URL: ${PATIENT_SERVICE_URL:-http://patient-service:3002}
     networks:
       - hypoxy-net
     healthcheck:
@@ -192,6 +196,10 @@ services:
     environment:
       <<: *common-env
       PORT: 3005
+      DEVICE_SERVICE_URL: ${DEVICE_SERVICE_URL:-http://device-service:3001}
+      ALERT_SERVICE_URL: ${ALERT_SERVICE_URL:-http://alert-service:3004}
+      PATIENT_SERVICE_URL: ${PATIENT_SERVICE_URL:-http://patient-service:3002}
+      ANALYSIS_SERVICE_URL: ${ANALYSIS_SERVICE_URL:-http://analysis-service:3003}
     networks:
       - hypoxy-net
     healthcheck:
@@ -209,6 +217,10 @@ services:
     environment:
       <<: *common-env
       PORT: 3006
+      SESSION_SERVICE_URL: ${SESSION_SERVICE_URL:-http://session-service:3005}
+      DEVICE_SERVICE_URL: ${DEVICE_SERVICE_URL:-http://device-service:3001}
+      PATIENT_SERVICE_URL: ${PATIENT_SERVICE_URL:-http://patient-service:3002}
+      ALERT_SERVICE_URL: ${ALERT_SERVICE_URL:-http://alert-service:3004}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USER: ${SMTP_USER}

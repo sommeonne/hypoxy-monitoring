@@ -105,7 +105,7 @@ function nextReading() {
 }
 
 async function postMeasurement(payload) {
-  const res = await fetch(`${GATEWAY_URL}/api/devices/measurements`, {
+  const res = await fetch(`${GATEWAY_URL}/api/device/measurements`, {
     method:  'POST',
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body:    JSON.stringify(payload),
