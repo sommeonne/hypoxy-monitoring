@@ -8,7 +8,7 @@ import { Roles } from '../common/roles.decorator';
 import { Role } from '../common/roles.enum';
 
 @ApiTags('measurements')
-@Controller('devices')
+@Controller('device')
 @Roles(Role.Doctor)
 export class MeasurementsController {
   constructor(private readonly measurementsService: MeasurementsService) {}
@@ -34,12 +34,9 @@ export class MeasurementsController {
   @Get('measurements/:sessionId')
   @ApiOperation({ summary: 'Get all measurements for a session' })
   @ApiResponse({ status: 200, type: [Measurement] })
-  async findBySession(
+  findBySession(
     @Param('sessionId', ParseUUIDPipe) sessionId: string,
-    @Headers('x-user-id') doctorId: string,
-    @Headers('x-user-role') role: string,
   ): Promise<Measurement[]> {
-    await this.measurementsService.verifySessionAccess(sessionId, doctorId, role);
     return this.measurementsService.findBySession(sessionId);
   }
 
@@ -54,12 +51,9 @@ export class MeasurementsController {
   @Get('latest/:patientId')
   @ApiOperation({ summary: 'Get latest measurement for a patient' })
   @ApiResponse({ status: 200, type: Measurement })
-  async findLatest(
+  findLatest(
     @Param('patientId', ParseUUIDPipe) patientId: string,
-    @Headers('x-user-id') doctorId: string,
-    @Headers('x-user-role') role: string,
   ): Promise<Measurement | null> {
-    await this.measurementsService.verifyPatientAccess(patientId, doctorId, role);
     return this.measurementsService.findLatestByPatient(patientId);
   }
 }

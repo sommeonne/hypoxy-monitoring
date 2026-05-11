@@ -30,6 +30,12 @@ const DEFAULT_URLS: Record<string, string> = {
 
 const PUBLIC_ROUTE_PREFIXES = ['/api/auth/google', '/api/auth'];
 
+const INTERNAL_ONLY_ROUTES = [
+  '/api/analysis/conclude',
+  '/api/device/stats',
+  '/api/alerts/count',
+];
+
 @Injectable()
 export class ProxyMiddleware implements NestMiddleware {
   private readonly logger = new Logger(ProxyMiddleware.name);
@@ -41,6 +47,11 @@ export class ProxyMiddleware implements NestMiddleware {
 
   use(req: Request, res: Response, next: NextFunction) {
     const path = req.path;
+
+    if (INTERNAL_ONLY_ROUTES.some((r) => path === r || path.startsWith(r + '/'))) {
+      res.status(403).json({ message: 'Forbidden' });
+      return;
+    }
 
     const routeKey = Object.keys(ROUTE_MAP).find((prefix) => path.startsWith(prefix));
     if (!routeKey) return next();

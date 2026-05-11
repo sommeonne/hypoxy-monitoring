@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { ILike, Repository } from 'typeorm';
 import { Patient } from './patient.entity';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
@@ -17,8 +17,14 @@ export class PatientsService {
     return this.repo.save(patient);
   }
 
-  findAll(doctorId: string): Promise<Patient[]> {
-    return this.repo.find({ where: { doctorId }, order: { createdAt: 'DESC' } });
+  findAll(
+    doctorId: string,
+    filters?: { cardNumber?: string; groupId?: string },
+  ): Promise<Patient[]> {
+    const where: any = { doctorId };
+    if (filters?.cardNumber) where.cardNumber = ILike(`%${filters.cardNumber}%`);
+    if (filters?.groupId) where.groupId = filters.groupId;
+    return this.repo.find({ where, order: { createdAt: 'DESC' } });
   }
 
   async findOne(id: string, doctorId?: string): Promise<Patient> {

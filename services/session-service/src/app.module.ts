@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { LoggerModule } from 'nestjs-pino';
 import { SessionsModule } from './sessions/sessions.module';
 import { Session } from './sessions/session.entity';
@@ -33,6 +34,7 @@ import { RolesGuard } from './common/roles.guard';
         logging: config.get('NODE_ENV') !== 'production',
       }),
     }),
+    ScheduleModule.forRoot(),
     SessionsModule,
     HealthModule,
   ],

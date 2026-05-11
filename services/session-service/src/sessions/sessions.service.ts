@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
+import { Cron } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -28,6 +29,13 @@ export class SessionsService {
   ) {}
 
   async create(dto: CreateSessionDto, doctorId: string): Promise<Session> {
+    const existing = await this.repo.findOne({
+      where: { patientId: dto.patientId, status: SessionStatus.ACTIVE },
+    });
+    if (existing) {
+      throw new BadRequestException('Patient already has an active session');
+    }
+
     const session = this.repo.create({
       ...dto,
       doctorId,
@@ -37,7 +45,7 @@ export class SessionsService {
     const saved = await this.repo.save(session);
     await this.redisPublisher.publish('sessions', JSON.stringify(saved));
     await this.redisPublisher.set(
-      'current_session',
+      `session:doctor:${doctorId}`,
       JSON.stringify({ id: saved.id, doctorId: saved.doctorId, patientId: saved.patientId }),
     );
     return saved;
@@ -57,7 +65,7 @@ export class SessionsService {
     const analysisBase = this.config.get('ANALYSIS_SERVICE_URL', 'http://analysis-service:3003');
 
     const [statsRes, alertCountRes, patientRes] = await Promise.all([
-      fetch(`${deviceBase}/devices/stats/${id}`, { headers: internalHeaders }),
+      fetch(`${deviceBase}/device/stats/${id}`, { headers: internalHeaders }),
       fetch(`${alertBase}/alerts/count/${id}`, { headers: internalHeaders }),
       fetch(`${patientBase}/patients/${session.patientId}`, { headers: internalHeaders }),
     ]);
@@ -124,7 +132,7 @@ export class SessionsService {
 
     const updated = await this.repo.save(session);
     await this.redisPublisher.publish('sessions', JSON.stringify(updated));
-    await this.redisPublisher.del('current_session');
+    await this.redisPublisher.del(`session:doctor:${session.doctorId}`);
     return updated;
   }
 
@@ -152,6 +160,24 @@ export class SessionsService {
     const session = await this.findOne(id, doctorId);
     session.notes = notes ?? null!;
     return this.repo.save(session);
+  }
+
+  @Cron('* * * * *')
+  async autoEndExpiredSessions(): Promise<void> {
+    const active = await this.repo.find({
+      where: { status: SessionStatus.ACTIVE },
+    });
+
+    for (const session of active) {
+      if (!session.plannedDurationSeconds) continue;
+      const endsAt = session.startedAt.getTime() + session.plannedDurationSeconds * 1000;
+      if (Date.now() >= endsAt) {
+        this.logger.log(`Auto-ending expired session ${session.id}`);
+        await this.end(session.id, session.doctorId).catch((err) =>
+          this.logger.error(`Failed to auto-end session ${session.id}: ${err.message}`),
+        );
+      }
+    }
   }
 
   private emptyStats(): DeviceStats {

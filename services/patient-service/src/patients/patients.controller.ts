@@ -1,6 +1,6 @@
 import {
   Controller, Get, Post, Put, Delete,
-  Body, Param, ParseUUIDPipe, HttpCode, HttpStatus, Headers,
+  Body, Param, ParseUUIDPipe, HttpCode, HttpStatus, Headers, Query,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { PatientsService } from './patients.service';
@@ -29,8 +29,12 @@ export class PatientsController {
   @Get()
   @ApiOperation({ summary: 'Get all patients' })
   @ApiResponse({ status: 200, type: [Patient] })
-  findAll(@Headers('x-user-id') doctorId: string): Promise<Patient[]> {
-    return this.patientsService.findAll(doctorId);
+  findAll(
+    @Headers('x-user-id') doctorId: string,
+    @Query('cardNumber') cardNumber?: string,
+    @Query('groupId') groupId?: string,
+  ): Promise<Patient[]> {
+    return this.patientsService.findAll(doctorId, { cardNumber, groupId });
   }
 
   @Get(':id')

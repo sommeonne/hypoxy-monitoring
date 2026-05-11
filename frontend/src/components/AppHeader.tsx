@@ -42,8 +42,8 @@ export default function AppHeader() {
   const queryClient = useQueryClient();
 
   const { data: patients = [] } = useQuery({
-    queryKey: ['patients'],
-    queryFn: fetchPatients,
+    queryKey: ['patients', '', ''],
+    queryFn: () => fetchPatients(),
     enabled: !isAdmin(),
     staleTime: 60_000,
   });

@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { Button, Spin, Input, Modal, Badge, message } from 'antd';
 import {
@@ -133,7 +133,6 @@ export default function SessionDetailPage() {
   const [sendingEmail, setSendingEmail] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState<number | null>(null);
   const [chartTab, setChartTab] = useState<ChartTabKey>('spo2');
-  const autoEndedRef = useRef(false);
 
   const { data: session, isLoading } = useQuery({
     queryKey: ['session', id],
@@ -228,35 +227,19 @@ export default function SessionDetailPage() {
       setRemainingSeconds(null);
       return;
     }
-    autoEndedRef.current = false;
 
     const calcRemaining = () => {
       const elapsed = Math.floor((Date.now() - new Date(session.startedAt).getTime()) / 1000);
       return session.plannedDurationSeconds! - elapsed;
     };
 
-    const initial = calcRemaining();
-    setRemainingSeconds(initial);
-
-    if (initial <= 0 && !autoEndedRef.current) {
-      autoEndedRef.current = true;
-      endMutation.mutate();
-      return;
-    }
+    setRemainingSeconds(calcRemaining());
 
     const interval = setInterval(() => {
-      const r = calcRemaining();
-      setRemainingSeconds(r);
-      if (r <= 0 && !autoEndedRef.current) {
-        autoEndedRef.current = true;
-        clearInterval(interval);
-        message.info('Planned session duration reached — ending session automatically.');
-        endMutation.mutate();
-      }
+      setRemainingSeconds(calcRemaining());
     }, 1000);
 
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.id, session?.status, session?.plannedDurationSeconds, session?.startedAt]);
 
   if (isLoading) return <Spin size="large" style={{ display: 'block', margin: '80px auto' }} />;

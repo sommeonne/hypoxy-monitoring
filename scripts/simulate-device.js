@@ -110,6 +110,7 @@ async function postMeasurement(payload) {
     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
     body:    JSON.stringify(payload),
   });
+  if (res.status === 204) return null;
   if (!res.ok) {
     const body = await res.text().catch(() => '');
     throw new Error(`${res.status} ${body}`);

@@ -110,15 +110,21 @@ export class PdfGeneratorService {
         doc.addPage();
         y = MARGIN;
         y = this.section(doc, `Alerts (${alerts.length} total)`, y);
-        const aHeaders = ['#', 'Level', 'Time', 'Message'];
+        const aHeaders = ['#', 'Level', 'Time', 'Triggered Vitals'];
         const aCols = [30, 70, 150, 265];
         y = this.tableHeader(doc, aHeaders, aCols, y);
         alerts.slice(0, 500).forEach((a, i) => {
+          const vals = a.values ?? {};
+          const parts: string[] = [];
+          if (vals.spo2 != null) parts.push(`SpO2: ${vals.spo2}%`);
+          if (vals.heartRate != null) parts.push(`HR: ${vals.heartRate} bpm`);
+          if (vals.respiratoryRate != null) parts.push(`RR: ${vals.respiratoryRate} br/min`);
+          const triggeredVitals = parts.length > 0 ? parts.join('  |  ') : '—';
           const cells = [
             String(i + 1),
             a.level,
             new Date(a.createdAt).toLocaleString(),
-            a.message,
+            triggeredVitals,
           ];
           const rowH = this.alertRowHeight(doc, cells, aCols);
           if (y + rowH > 790) { doc.addPage(); y = MARGIN; y = this.tableHeader(doc, aHeaders, aCols, y); }

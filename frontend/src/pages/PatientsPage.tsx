@@ -2,7 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { Table, Button, Modal, Form, Input, DatePicker, Typography, Select, InputNumber, Space } from 'antd';
 import { PlusOutlined, ArrowRightOutlined, SearchOutlined } from '@ant-design/icons';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchPatients, createPatient, Patient } from '../api/patients';
+import { fetchPatients, createPatient, Patient, PatientFilters } from '../api/patients';
 import { fetchGroups } from '../api/groups';
 import { useNavigate } from 'react-router-dom';
 
@@ -44,13 +44,17 @@ export default function PatientsPage() {
 
   const [nameSearch, setNameSearch] = useState('');
   const [cardSearch, setCardSearch] = useState('');
-  const [groupFilter, setGroupFilter] = useState<number | null>(null);
+  const [groupFilter, setGroupFilter] = useState<string | null>(null);
 
   const { data: groupsData = [] } = useQuery({ queryKey: ['groups'], queryFn: fetchGroups });
 
+  const serverFilters: PatientFilters = {};
+  if (cardSearch.trim()) serverFilters.cardNumber = cardSearch.trim();
+  if (groupFilter) serverFilters.groupId = groupFilter;
+
   const { data: patients = [], isLoading } = useQuery({
-    queryKey: ['patients'],
-    queryFn: fetchPatients,
+    queryKey: ['patients', serverFilters.cardNumber ?? '', serverFilters.groupId ?? ''],
+    queryFn: () => fetchPatients(serverFilters),
   });
 
   const mutation = useMutation({
@@ -64,14 +68,11 @@ export default function PatientsPage() {
 
   const filtered = useMemo(() => {
     const name = nameSearch.trim().toLowerCase();
-    const card = cardSearch.trim().toLowerCase();
-    return patients.filter((p) => {
-      if (name && !`${p.firstName} ${p.lastName}`.toLowerCase().includes(name)) return false;
-      if (card && !(p.cardNumber ?? '').toLowerCase().includes(card)) return false;
-      if (groupFilter != null && p.group?.number !== groupFilter) return false;
-      return true;
-    });
-  }, [patients, nameSearch, cardSearch, groupFilter]);
+    if (!name) return patients;
+    return patients.filter((p) =>
+      `${p.firstName} ${p.lastName}`.toLowerCase().includes(name),
+    );
+  }, [patients, nameSearch]);
 
   const columns = [
     {
@@ -183,7 +184,7 @@ export default function PatientsPage() {
           style={{ width: 120 }}
         >
           {groupsData.map((g) => (
-            <Select.Option key={g.id} value={g.number}>Group {g.number}</Select.Option>
+            <Select.Option key={g.id} value={g.id}>Group {g.number}</Select.Option>
           ))}
         </Select>
       </Space>

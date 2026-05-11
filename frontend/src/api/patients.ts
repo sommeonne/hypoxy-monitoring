@@ -23,7 +23,18 @@ export interface Patient {
 
 export type PatientPayload = Omit<Patient, 'id' | 'createdAt' | 'group'>;
 
-export const fetchPatients = () => api.get<Patient[]>('/patients');
+export interface PatientFilters {
+  cardNumber?: string;
+  groupId?: string;
+}
+
+export const fetchPatients = (filters?: PatientFilters) => {
+  const params = new URLSearchParams();
+  if (filters?.cardNumber) params.set('cardNumber', filters.cardNumber);
+  if (filters?.groupId) params.set('groupId', filters.groupId);
+  const qs = params.toString();
+  return api.get<Patient[]>(qs ? `/patients?${qs}` : '/patients');
+};
 export const fetchPatient = (id: string) => api.get<Patient>(`/patients/${id}`);
 export const createPatient = (data: PatientPayload) => api.post<Patient>('/patients', data);
 export const updatePatient = (id: string, data: PatientPayload) =>
