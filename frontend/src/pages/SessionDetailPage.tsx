@@ -4,8 +4,6 @@ import { Button, Spin, Input, Modal, Badge, message } from 'antd';
 import {
   DownloadOutlined,
   StopOutlined,
-  SortAscendingOutlined,
-  SortDescendingOutlined,
   FileTextOutlined,
   MailOutlined,
   DeleteOutlined,
@@ -13,11 +11,11 @@ import {
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchSession, endSession, updateSessionNotes } from '../api/sessions';
 import { fetchSessionMeasurements, Measurement } from '../api/measurements';
-import { fetchAlerts, Alert } from '../api/alerts';
+import { fetchAlerts } from '../api/alerts';
 import { fetchPatient } from '../api/patients';
 import { useSocket } from '../hooks/useSocket';
 import MeasurementChart from '../components/MeasurementChart';
-import AlertsTable from '../components/AlertsTable';
+import SessionAlertsCard from '../components/SessionAlertsCard';
 
 
 type ChartTabKey = 'spo2' | 'heartRate' | 'respRate' | 'o2' | 'tidalVolume';
@@ -126,7 +124,6 @@ export default function SessionDetailPage() {
   const { on, joinSession, leaveSession } = useSocket();
 
   const [liveData, setLiveData] = useState<Measurement[]>([]);
-  const [sortDesc, setSortDesc] = useState(true);
   const [noteText, setNoteText] = useState('');
   const [noteModalOpen, setNoteModalOpen] = useState(false);
   const [hasDraft, setHasDraft] = useState(false);
@@ -160,6 +157,7 @@ export default function SessionDetailPage() {
 
   useEffect(() => {
     if (measurements.length) setLiveData(measurements);
+
   }, [measurements]);
 
   useEffect(() => {
@@ -202,6 +200,10 @@ export default function SessionDetailPage() {
       queryClient.invalidateQueries({ queryKey: ['session', id] });
       queryClient.invalidateQueries({ queryKey: ['activeSessions'] });
     },
+    onError: () => {
+      queryClient.invalidateQueries({ queryKey: ['session', id] });
+      queryClient.invalidateQueries({ queryKey: ['activeSessions'] });
+    },
   });
 
   useEffect(() => {
@@ -215,12 +217,6 @@ export default function SessionDetailPage() {
       if (m.sessionId === id) setLiveData((prev) => [m, ...prev].slice(0, 500));
     });
   }, [on, id]);
-
-  useEffect(() => {
-    return on('alert:new', (a: Alert) => {
-      if (a.sessionId === id) queryClient.invalidateQueries({ queryKey: ['sessionAlerts', id] });
-    });
-  }, [on, id, queryClient]);
 
   useEffect(() => {
     if (!session || session.status !== 'active' || !session.plannedDurationSeconds) {
@@ -248,11 +244,6 @@ export default function SessionDetailPage() {
   const displayData = liveData.length > 0 ? liveData : measurements;
   const latest = displayData[0];
   const isActive = session.status === 'active';
-
-  const filteredAlerts = [...alerts].sort((a, b) => {
-    const diff = new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    return sortDesc ? diff : -diff;
-  });
 
   const activeTabCfg = CHART_TABS.find((t) => t.key === chartTab)!;
 
@@ -522,50 +513,7 @@ export default function SessionDetailPage() {
             </div>
           </SCard>
 
-          {/* Alerts */}
-          <SCard
-            title={
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span>Alerts</span>
-                <span
-                  style={{
-                    fontSize: 11,
-                    fontWeight: 600,
-                    padding: '2px 8px',
-                    borderRadius: 4,
-                    background: alerts.length > 0 ? '#FFFBEB' : '#F1F5F9',
-                    color: alerts.length > 0 ? '#EF9F27' : '#64748B',
-                  }}
-                >
-                  {alerts.length}
-                </span>
-              </div>
-            }
-            titleRight={
-              <button
-                onClick={() => setSortDesc((v) => !v)}
-                style={{
-                  fontSize: 11,
-                  padding: '3px 9px',
-                  borderRadius: 4,
-                  border: '1px solid #E2E8F0',
-                  cursor: 'pointer',
-                  fontFamily: 'inherit',
-                  background: 'transparent',
-                  color: '#64748B',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 4,
-                }}
-                title={sortDesc ? 'Newest first' : 'Oldest first'}
-              >
-                {sortDesc ? <SortDescendingOutlined /> : <SortAscendingOutlined />}
-                {sortDesc ? 'Newest' : 'Oldest'}
-              </button>
-            }
-          >
-            <AlertsTable alerts={filteredAlerts} />
-          </SCard>
+          <SessionAlertsCard sessionId={id!} />
         </div>
       </div>
 

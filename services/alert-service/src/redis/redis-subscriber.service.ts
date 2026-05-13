@@ -16,20 +16,33 @@ export class RedisSubscriberService implements OnModuleInit, OnModuleDestroy {
   private running = true;
   private readonly logger = new Logger(RedisSubscriberService.name);
 
+  private sessionServiceUrl: string;
+
   constructor(
     private readonly config: ConfigService,
     private readonly alertsService: AlertsService,
   ) {}
 
+  private async fetchDoctorId(sessionId: string): Promise<string | undefined> {
+    try {
+      const res = await fetch(`${this.sessionServiceUrl}/sessions/${sessionId}`, {
+        headers: { 'x-user-role': 'doctor' },
+      });
+      if (!res.ok) return undefined;
+      const session = await res.json() as { doctorId?: string };
+      return session.doctorId ?? undefined;
+    } catch {
+      return undefined;
+    }
+  }
+
   async onModuleInit() {
+    this.sessionServiceUrl = this.config.get('SESSION_SERVICE_URL', 'http://session-service:3005');
     this.client = new Redis({
       host: this.config.get('REDIS_HOST', 'localhost'),
       port: this.config.get<number>('REDIS_PORT', 6379),
     });
 
-    // MKSTREAM creates the stream if it doesn't exist yet.
-    // '0' means the group will see all existing messages on first run.
-    // If the group already exists (BUSYGROUP), ignore — it's idempotent.
     await this.client
       .xgroup('CREATE', STREAM, GROUP, '0', 'MKSTREAM')
       .catch((err: Error) => {
@@ -41,13 +54,10 @@ export class RedisSubscriberService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async poll() {
-    // On startup, re-process any messages that were delivered but never ACKed
-    // (e.g. the service crashed mid-processing).
     await this.processPending();
 
     while (this.running) {
       try {
-        // '>' means: give me only new messages not yet delivered to any consumer.
         const results = await (this.client.xreadgroup as Function)(
           'GROUP', GROUP, CONSUMER,
           'COUNT', COUNT,
@@ -73,7 +83,6 @@ export class RedisSubscriberService implements OnModuleInit, OnModuleDestroy {
 
   private async processPending() {
     try {
-      // '0' instead of '>' returns messages that were delivered but not ACKed.
       const results = await (this.client.xreadgroup as Function)(
         'GROUP', GROUP, CONSUMER,
         'COUNT', 100,
@@ -99,20 +108,22 @@ export class RedisSubscriberService implements OnModuleInit, OnModuleDestroy {
         data[fields[i]] = fields[i + 1];
       }
 
+      const doctorId = await this.fetchDoctorId(data.sessionId);
+
       await this.alertsService.create({
         patientId: data.patientId,
         sessionId: data.sessionId,
         measurementId: data.measurementId,
         level: data.level as AlertLevel,
         values: JSON.parse(data.values),
+        ...(doctorId && { doctorId }),
       });
 
       await this.client.xack(STREAM, GROUP, id);
       this.logger.debug(`Processed and ACKed alert ${id}`);
     } catch (err) {
       this.logger.error(`Failed to process alert entry ${id} — will retry`, err);
-      // Intentionally not ACKing: message stays in the Pending Entries List
-      // and will be re-delivered on the next processPending() call.
+
     }
   }
 

@@ -19,6 +19,10 @@ export class Alert {
   @Column()
   sessionId: string;
 
+  @ApiProperty({ required: false })
+  @Column({ nullable: true })
+  doctorId: string;
+
   @ApiProperty()
   @Column()
   measurementId: string;

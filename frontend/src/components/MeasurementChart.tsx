@@ -20,7 +20,6 @@ interface Props {
   name: string;
   unit: string;
   domain: [number | string, number | string];
-  /** Draws a dashed horizontal reference line (e.g. set O₂ level) */
   referenceValue?: number;
   referenceLabel?: string;
   referenceColor?: string;

@@ -10,7 +10,6 @@ volumes:
 x-common-env: &common-env
   DB_HOST: postgres
   DB_PORT: 5432
-  DB_NAME: ${DB_NAME:-hypoxy_db}
   DB_USER: ${DB_USER:-hypoxy}
   DB_PASSWORD: ${DB_PASSWORD:-hypoxy_password}
   REDIS_HOST: redis
@@ -34,15 +33,16 @@ services:
     image: postgres:15-alpine
     <<: *restart-policy
     environment:
-      POSTGRES_DB: ${DB_NAME:-hypoxy_db}
+      POSTGRES_DB: postgres
       POSTGRES_USER: ${DB_USER:-hypoxy}
       POSTGRES_PASSWORD: ${DB_PASSWORD:-hypoxy_password}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - hypoxy-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-hypoxy} -d ${DB_NAME:-hypoxy_db}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-hypoxy} -d postgres"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -67,6 +67,7 @@ services:
     <<: [*restart-policy, *service-depends]
     environment:
       <<: *common-env
+      DB_NAME: user_db
       PORT: 3007
       GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
       GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
@@ -122,6 +123,7 @@ services:
     <<: [*restart-policy, *service-depends]
     environment:
       <<: *common-env
+      DB_NAME: device_db
       PORT: 3001
       SESSION_SERVICE_URL: ${SESSION_SERVICE_URL:-http://session-service:3005}
       PATIENT_SERVICE_URL: ${PATIENT_SERVICE_URL:-http://patient-service:3002}
@@ -141,6 +143,7 @@ services:
     <<: [*restart-policy, *service-depends]
     environment:
       <<: *common-env
+      DB_NAME: patient_db
       PORT: 3002
       ENCRYPTION_KEY: ${ENCRYPTION_KEY}
     networks:
@@ -176,6 +179,7 @@ services:
     <<: [*restart-policy, *service-depends]
     environment:
       <<: *common-env
+      DB_NAME: alert_db
       PORT: 3004
       SESSION_SERVICE_URL: ${SESSION_SERVICE_URL:-http://session-service:3005}
       PATIENT_SERVICE_URL: ${PATIENT_SERVICE_URL:-http://patient-service:3002}
@@ -195,6 +199,7 @@ services:
     <<: [*restart-policy, *service-depends]
     environment:
       <<: *common-env
+      DB_NAME: session_db
       PORT: 3005
       DEVICE_SERVICE_URL: ${DEVICE_SERVICE_URL:-http://device-service:3001}
       ALERT_SERVICE_URL: ${ALERT_SERVICE_URL:-http://alert-service:3004}
@@ -216,6 +221,7 @@ services:
     <<: [*restart-policy, *service-depends]
     environment:
       <<: *common-env
+      DB_NAME: report_db
       PORT: 3006
       SESSION_SERVICE_URL: ${SESSION_SERVICE_URL:-http://session-service:3005}
       DEVICE_SERVICE_URL: ${DEVICE_SERVICE_URL:-http://device-service:3001}

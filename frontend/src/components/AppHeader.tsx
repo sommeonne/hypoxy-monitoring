@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import { Layout, Menu, Avatar, Dropdown } from 'antd';
 import {
   TeamOutlined,
@@ -7,10 +7,8 @@ import {
   LogoutOutlined,
 } from '@ant-design/icons';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 import { isAdmin, getFullName, logout } from '../utils/auth';
-import AlertPanel from './AlertPanel';
-import { fetchPatients } from '../api/patients';
 
 const { Header } = Layout;
 
@@ -40,14 +38,6 @@ export default function AppHeader() {
   const navigate = useNavigate();
   const location = useLocation();
   const queryClient = useQueryClient();
-
-  const { data: patients = [] } = useQuery({
-    queryKey: ['patients', '', ''],
-    queryFn: () => fetchPatients(),
-    enabled: !isAdmin(),
-    staleTime: 60_000,
-  });
-  const myPatientIds = useMemo(() => new Set(patients.map((p) => p.id)), [patients]);
 
   const menuItems = isAdmin()
     ? [
@@ -79,7 +69,6 @@ export default function AppHeader() {
 
   return (
     <>
-      {!isAdmin() && <AlertPanel patientIds={myPatientIds} />}
       <Header
         style={{
           display: 'flex',

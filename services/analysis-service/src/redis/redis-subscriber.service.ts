@@ -1,8 +1,8 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
-import { AnalysisService } from './analysis.service';
-import { Measurement } from './thresholds';
+import { AnalysisService } from '../analysis/analysis.service';
+import { Measurement } from '../analysis/thresholds';
 
 @Injectable()
 export class RedisSubscriberService implements OnModuleInit, OnModuleDestroy {

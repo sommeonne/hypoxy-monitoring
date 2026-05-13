@@ -1,8 +1,11 @@
 import {
   Entity, PrimaryGeneratedColumn, Column,
   CreateDateColumn, UpdateDateColumn,
+  ManyToOne, JoinColumn,
 } from 'typeorm';
 import { ApiProperty } from '@nestjs/swagger';
+import { Role } from '../common/roles.enum';
+import { Specialization } from '../specializations/specialization.entity';
 
 @Entity('users')
 export class User {
@@ -26,17 +29,18 @@ export class User {
   @Column({ nullable: true })
   googleId: string;
 
-  @ApiProperty({ enum: ['admin', 'doctor'] })
-  @Column({ default: 'doctor' })
-  role: string;
+  @ApiProperty({ enum: Role })
+  @Column({ type: 'enum', enum: Role, default: Role.Doctor })
+  role: Role;
 
   @ApiProperty({ nullable: true })
   @Column({ nullable: true, unique: true })
   email: string;
 
-  @ApiProperty({ nullable: true })
-  @Column({ nullable: true })
-  specialization: string;
+  @ApiProperty({ type: () => Specialization, nullable: true })
+  @ManyToOne(() => Specialization, { nullable: true, eager: true, onDelete: 'SET NULL' })
+  @JoinColumn()
+  specialization: Specialization | null;
 
   @ApiProperty()
   @CreateDateColumn()

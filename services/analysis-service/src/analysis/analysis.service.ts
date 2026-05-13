@@ -1,10 +1,11 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { AlertLevel, THRESHOLDS, Measurement, AnalysisResult, ConcludeRequest, ConcludeResponse } from './thresholds';
-import { RedisPublisherService } from './redis-publisher.service';
+import { RedisPublisherService } from '../redis/redis-publisher.service';
 
 @Injectable()
 export class AnalysisService {
   private readonly logger = new Logger(AnalysisService.name);
+  private readonly REACTION_THRESHOLD = 30; 
 
   constructor(private readonly redisPublisher: RedisPublisherService) {}
 
@@ -67,50 +68,52 @@ export class AnalysisService {
   computeConclusion(req: ConcludeRequest): ConcludeResponse {
     const { finalSpo2, finalHeartRate, finalRespiratoryRate, finalTidalVolume, o2Percentage } = req;
 
-    const refHR = req.baselineHeartRate ?? req.firstHeartRate ?? finalHeartRate;
-    const refRR = req.baselineRespiratoryRate ?? req.firstRespiratoryRate ?? finalRespiratoryRate;
-    const refTV = req.baselineTidalVolume ?? finalTidalVolume;
+    const refHR = req.baselineHeartRate;
+    const refRR = req.baselineRespiratoryRate;
+    const refTV = req.baselineTidalVolume;
 
-    const hrChangePct = (refHR != null && finalHeartRate != null && refHR > 0) 
-      ? Math.abs((finalHeartRate - refHR) / refHR) * 100 
-      : 0;
-
-    const rrChangePct = (refRR != null && finalRespiratoryRate != null && refRR > 0) 
-      ? Math.abs((finalRespiratoryRate - refRR) / refRR) * 100 
-      : 0;
-
-    const tvChangePct = (refTV != null && finalTidalVolume != null && refTV > 0)
-      ? Math.abs((finalTidalVolume - refTV) / refTV) * 100
+    const hrChange = this.calculateChangePct(refHR, finalHeartRate);
+    const rrChange = this.calculateChangePct(refRR, finalRespiratoryRate);
+    const tvChange = (refTV != null && finalTidalVolume != null) 
+      ? this.calculateChangePct(refTV, finalTidalVolume) 
       : null;
 
-    let resistance: string;
-    if (finalSpo2 == null) {
-      resistance = 'Hypoxia tolerance unknown (no data)';
-    } else if (finalSpo2 > 85) {
-      resistance = 'Hypoxia tolerance high';
-    } else if (finalSpo2 >= 80) {
-      resistance = 'Hypoxia tolerance normal';
-    } else if (finalSpo2 >= 75) {
-      const o2 = o2Percentage ?? 10;
-      if (o2 <= 10) resistance = 'Hypoxia tolerance moderately reduced';
-      else if (o2 <= 12) resistance = 'Hypoxia tolerance reduced';
-      else resistance = 'Hypoxia tolerance sharply reduced';
-    } else {
-      resistance = 'Hypoxia tolerance sharply reduced';
+    const resistance = this.getResistanceStatus(finalSpo2, o2Percentage);
+    const reaction = this.getReactionStatus(hrChange, rrChange, tvChange);
+
+    return { 
+      conclusion: `${resistance}, ${reaction}` 
+    };
+  }
+
+  private calculateChangePct(ref: number | null | undefined, final: number | null | undefined): number {
+    if (ref == null || final == null || ref <= 0) return 0;
+    return Math.abs((final - ref) / ref) * 100;
+  }
+
+  private getResistanceStatus(spo2: number | null | undefined, o2Pct: number | null | undefined): string {
+    if (spo2 == null) return 'Hypoxia tolerance unknown (no data)';
+    if (spo2 > 85) return 'Hypoxia tolerance high';
+    if (spo2 >= 80) return 'Hypoxia tolerance normal';
+    
+    if (spo2 >= 75) {
+      const o2 = o2Pct ?? 10;
+      if (o2 <= 10) return 'Hypoxia tolerance moderately reduced';
+      if (o2 <= 12) return 'Hypoxia tolerance reduced';
+      return 'Hypoxia tolerance sharply reduced';
     }
+    
+    return 'Hypoxia tolerance sharply reduced';
+  }
 
-    const hrElevated = hrChangePct > 30;
-    const rrElevated = rrChangePct > 30;
-    const tvElevated = tvChangePct != null && tvChangePct > 30;
-    const respiratoryElevated = rrElevated || tvElevated;
+  private getReactionStatus(hrChange: number, rrChange: number, tvChange: number | null): string {
+    const hrElevated = hrChange > this.REACTION_THRESHOLD;
+    const respElevated = rrChange > this.REACTION_THRESHOLD || (tvChange !== null && tvChange > this.REACTION_THRESHOLD);
 
-    let reaction: string;
-    if (hrElevated && respiratoryElevated) reaction = 'hemodynamic and respiratory reaction elevated';
-    else if (hrElevated) reaction = 'hemodynamic reaction elevated';
-    else if (respiratoryElevated) reaction = 'respiratory reaction elevated';
-    else reaction = 'reaction normal';
-
-    return { conclusion: `${resistance}, ${reaction}` };
+    if (hrElevated && respElevated) return 'hemodynamic and respiratory reaction elevated';
+    if (hrElevated) return 'hemodynamic reaction elevated';
+    if (respElevated) return 'respiratory reaction elevated';
+    return 'reaction normal';
   }
 
   private async sendAlert(result: AnalysisResult): Promise<void> {

@@ -6,7 +6,7 @@ export interface User {
   firstName: string;
   lastName: string;
   email: string;
-  specialization?: string;
+  specialization?: { id: string; name: string } | null;
   role: string;
   createdAt: string;
 }
@@ -15,7 +15,7 @@ export interface CreateUserPayload {
   firstName: string;
   lastName: string;
   email: string;
-  specialization?: string;
+  specializationId?: string;
   role?: 'admin' | 'doctor';
 }
 
@@ -23,7 +23,7 @@ export interface UpdateUserPayload {
   firstName?: string;
   lastName?: string;
   email?: string;
-  specialization?: string;
+  specializationId?: string | null;
 }
 
 export const fetchUsers = () => api.get<User[]>('/users');

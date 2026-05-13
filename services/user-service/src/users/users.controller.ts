@@ -34,7 +34,7 @@ export class UsersController {
   @ApiResponse({ status: 200, type: User })
   update(
     @Param('id', ParseUUIDPipe) id: string,
-    @Body() body: Partial<{ firstName: string; lastName: string; specialization: string }>,
+    @Body() body: Partial<{ firstName: string; lastName: string; email: string; specializationId: string | null }>,
   ): Promise<User> {
     return this.usersService.update(id, body);
   }

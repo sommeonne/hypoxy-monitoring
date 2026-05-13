@@ -2,7 +2,7 @@ import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { EventsGateway } from './events.gateway';
-import { RedisRelayService } from './redis-relay.service';
+import { RedisRelayService } from '../redis/redis-relay.service';
 
 @Module({
   imports: [

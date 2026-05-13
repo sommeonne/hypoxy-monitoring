@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
-import { EventsGateway } from './events.gateway';
+import { EventsGateway } from '../websocket/events.gateway';
 
 const CHANNELS = ['measurements', 'alerts', 'sessions'] as const;
 const CHANNEL_EVENT: Record<string, string> = {
@@ -43,9 +43,9 @@ export class RedisRelayService implements OnModuleInit, OnModuleDestroy {
             this.gateway.server.to(`session:${sessionId}`).emit(event, payload);
           }
         } else if (channel === 'alerts') {
-          const sessionId = payload.sessionId;
-          if (sessionId) {
-            this.gateway.server.to(`session:${sessionId}`).emit(event, payload);
+          const { doctorId } = payload;
+          if (doctorId) {
+            this.gateway.server.to(`doctor:${doctorId}`).emit(event, payload);
           }
         } else if (channel === 'sessions') {
           const doctorId = payload.doctorId;

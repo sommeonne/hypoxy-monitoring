@@ -2,6 +2,7 @@ import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Layout } from 'antd';
 import AppHeader from './components/AppHeader';
+import AlertNotifier from './components/AlertNotifier';
 import PatientsPage from './pages/PatientsPage';
 import PatientDetailPage from './pages/PatientDetailPage';
 import SessionDetailPage from './pages/SessionDetailPage';
@@ -39,6 +40,7 @@ export default function App() {
         element={
           <PrivateRoute>
             <Layout style={{ minHeight: '100vh', background: '#F8FAFC' }}>
+              {!isAdmin() && <AlertNotifier />}
               <AppHeader />
               <Content>
                 <div style={{ maxWidth: 1280, margin: '0 auto', padding: '32px 40px', width: '100%' }}>

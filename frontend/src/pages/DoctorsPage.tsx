@@ -80,11 +80,11 @@ export default function DoctorsPage() {
       firstName: user.firstName,
       lastName: user.lastName,
       email: user.email,
-      specialization: user.specialization,
+      specializationId: user.specialization?.id ?? null,
     });
   };
 
-  const specializationOptions = specializations.map((s) => ({ value: s.name, label: s.name }));
+  const specializationOptions = specializations.map((s) => ({ value: s.id, label: s.name }));
 
   const columns = [
     {
@@ -101,8 +101,8 @@ export default function DoctorsPage() {
     {
       title: <span className="label-caps">Specialization</span>,
       dataIndex: 'specialization',
-      render: (v: string) => (
-        <Text style={{ color: '#64748B', fontSize: 13 }}>{v || '—'}</Text>
+      render: (v: { name: string } | null) => (
+        <Text style={{ color: '#64748B', fontSize: 13 }}>{v?.name || '—'}</Text>
       ),
     },
     {
@@ -176,7 +176,7 @@ export default function DoctorsPage() {
         </Form.Item>
       </div>
       <Form.Item
-        name="specialization"
+        name="specializationId"
         label={<span style={{ fontWeight: 500, fontSize: 13 }}>Specialization</span>}
       >
         <Select

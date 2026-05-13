@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, ParseUUIDPipe, Query } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, ParseUUIDPipe, Query, Headers } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { AlertsService } from './alerts.service';
 import { CreateAlertDto } from './dto/create-alert.dto';
@@ -25,10 +25,11 @@ export class AlertsController {
   @ApiQuery({ name: 'sessionId', required: false })
   @ApiResponse({ status: 200, type: [Alert] })
   findAll(
+    @Headers('x-user-id') doctorId: string,
     @Query('patientId') patientId?: string,
     @Query('sessionId') sessionId?: string,
   ): Promise<Alert[]> {
-    return this.alertsService.findAll(patientId, sessionId);
+    return this.alertsService.findAll(doctorId, patientId, sessionId);
   }
 
   @Get('count/:sessionId')
@@ -43,8 +44,9 @@ export class AlertsController {
   @ApiOperation({ summary: 'Get alerts for a patient' })
   @ApiResponse({ status: 200, type: [Alert] })
   findByPatient(
+    @Headers('x-user-id') doctorId: string,
     @Param('patientId', ParseUUIDPipe) patientId: string,
   ): Promise<Alert[]> {
-    return this.alertsService.findByPatient(patientId);
+    return this.alertsService.findByPatient(doctorId, patientId);
   }
 }

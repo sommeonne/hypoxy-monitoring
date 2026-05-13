@@ -1,5 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger } from '@nestjs/common';
-import { Cron } from '@nestjs/schedule';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException, Logger, OnModuleInit } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ConfigService } from '@nestjs/config';
@@ -18,8 +17,9 @@ interface DeviceStats {
 }
 
 @Injectable()
-export class SessionsService {
+export class SessionsService implements OnModuleInit {
   private readonly logger = new Logger(SessionsService.name);
+  private readonly timers = new Map<string, NodeJS.Timeout>();
 
   constructor(
     @InjectRepository(Session)
@@ -27,6 +27,33 @@ export class SessionsService {
     private readonly redisPublisher: RedisPublisherService,
     private readonly config: ConfigService,
   ) {}
+
+  async onModuleInit(): Promise<void> {
+    const active = await this.repo.find({ where: { status: SessionStatus.ACTIVE } });
+    for (const session of active) {
+      this.scheduleAutoEnd(session);
+    }
+    this.logger.log(`Scheduled auto-end for ${active.length} active session(s)`);
+  }
+
+  private scheduleAutoEnd(session: Session): void {
+    if (!session.plannedDurationSeconds) return;
+    const endsAt = session.startedAt.getTime() + session.plannedDurationSeconds * 1000;
+    const delay = endsAt - Date.now();
+    if (delay <= 0) {
+      this.end(session.id, session.doctorId).catch((err) =>
+        this.logger.error(`Failed to auto-end session ${session.id}: ${err.message}`),
+      );
+      return;
+    }
+    const timer = setTimeout(() => {
+      this.timers.delete(session.id);
+      this.end(session.id, session.doctorId).catch((err) =>
+        this.logger.error(`Failed to auto-end session ${session.id}: ${err.message}`),
+      );
+    }, delay);
+    this.timers.set(session.id, timer);
+  }
 
   async create(dto: CreateSessionDto, doctorId: string): Promise<Session> {
     const existing = await this.repo.findOne({
@@ -43,10 +70,15 @@ export class SessionsService {
       status: SessionStatus.ACTIVE,
     });
     const saved = await this.repo.save(session);
+    this.scheduleAutoEnd(saved);
     await this.redisPublisher.publish('sessions', JSON.stringify(saved));
     await this.redisPublisher.set(
       `session:doctor:${doctorId}`,
       JSON.stringify({ id: saved.id, doctorId: saved.doctorId, patientId: saved.patientId }),
+    );
+    await this.redisPublisher.set(
+      `session:${saved.id}`,
+      JSON.stringify({ doctorId: saved.doctorId }),
     );
     return saved;
   }
@@ -55,6 +87,11 @@ export class SessionsService {
     const session = await this.findOne(id, doctorId);
     if (session.status !== SessionStatus.ACTIVE) {
       throw new BadRequestException('Session is not active');
+    }
+    const timer = this.timers.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      this.timers.delete(id);
     }
 
     const internalHeaders = { 'x-user-id': doctorId ?? '', 'x-user-role': 'doctor' };
@@ -133,6 +170,7 @@ export class SessionsService {
     const updated = await this.repo.save(session);
     await this.redisPublisher.publish('sessions', JSON.stringify(updated));
     await this.redisPublisher.del(`session:doctor:${session.doctorId}`);
+    await this.redisPublisher.del(`session:${session.id}`);
     return updated;
   }
 
@@ -160,24 +198,6 @@ export class SessionsService {
     const session = await this.findOne(id, doctorId);
     session.notes = notes ?? null!;
     return this.repo.save(session);
-  }
-
-  @Cron('* * * * *')
-  async autoEndExpiredSessions(): Promise<void> {
-    const active = await this.repo.find({
-      where: { status: SessionStatus.ACTIVE },
-    });
-
-    for (const session of active) {
-      if (!session.plannedDurationSeconds) continue;
-      const endsAt = session.startedAt.getTime() + session.plannedDurationSeconds * 1000;
-      if (Date.now() >= endsAt) {
-        this.logger.log(`Auto-ending expired session ${session.id}`);
-        await this.end(session.id, session.doctorId).catch((err) =>
-          this.logger.error(`Failed to auto-end session ${session.id}: ${err.message}`),
-        );
-      }
-    }
   }
 
   private emptyStats(): DeviceStats {

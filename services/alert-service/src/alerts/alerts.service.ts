@@ -20,8 +20,8 @@ export class AlertsService {
     return saved;
   }
 
-  findAll(patientId?: string, sessionId?: string): Promise<Alert[]> {
-    const where: any = {};
+  findAll(doctorId: string, patientId?: string, sessionId?: string): Promise<Alert[]> {
+    const where: any = { doctorId };
     if (patientId) where.patientId = patientId;
     if (sessionId) where.sessionId = sessionId;
     return this.repo.find({ where, order: { createdAt: 'DESC' } });
@@ -32,7 +32,7 @@ export class AlertsService {
     return { count };
   }
 
-  findByPatient(patientId: string): Promise<Alert[]> {
-    return this.repo.find({ where: { patientId }, order: { createdAt: 'DESC' } });
+  findByPatient(doctorId: string, patientId: string): Promise<Alert[]> {
+    return this.repo.find({ where: { doctorId, patientId }, order: { createdAt: 'DESC' } });
   }
 }

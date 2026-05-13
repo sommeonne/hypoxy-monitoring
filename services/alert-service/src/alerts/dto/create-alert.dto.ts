@@ -1,4 +1,4 @@
-import { IsUUID, IsEnum, IsString, IsNotEmpty, IsObject } from 'class-validator';
+import { IsUUID, IsEnum, IsString, IsNotEmpty, IsObject, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { AlertLevel } from '../alert.entity';
 
@@ -10,6 +10,11 @@ export class CreateAlertDto {
   @ApiProperty()
   @IsUUID()
   sessionId: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsUUID()
+  doctorId?: string;
 
   @ApiProperty()
   @IsUUID()

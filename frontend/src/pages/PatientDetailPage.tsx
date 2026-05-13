@@ -117,7 +117,7 @@ export default function PatientDetailPage() {
       startSession({
         patientId: id!,
         o2Percentage: values.o2Percentage,
-        plannedDurationSeconds: values.durationMinutes * 60 + values.durationSeconds,
+        plannedDurationSeconds: (values.durationMinutes ?? 0) * 60 + (values.durationSeconds ?? 0),
       }),
     onSuccess: (session) => {
       setModalOpen(false);
@@ -446,7 +446,6 @@ export default function PatientDetailPage() {
               <Form.Item
                 name="durationMinutes"
                 initialValue={0}
-                rules={[{ required: true, message: "Required" }]}
                 style={{ marginBottom: 0, flex: 1 }}
               >
                 <InputNumber min={0} max={999} addonAfter="min" style={{ width: "100%" }} />
@@ -454,10 +453,7 @@ export default function PatientDetailPage() {
               <Form.Item
                 name="durationSeconds"
                 initialValue={0}
-                rules={[
-                  { required: true, message: "Required" },
-                  { type: "number", min: 0, max: 59, message: "0–59" },
-                ]}
+                rules={[{ type: "number", min: 0, max: 59, message: "0–59" }]}
                 style={{ marginBottom: 0, flex: 1 }}
               >
                 <InputNumber min={0} max={59} addonAfter="sec" style={{ width: "100%" }} />

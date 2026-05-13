@@ -13,7 +13,6 @@ export class EventsGateway implements OnGatewayInit, OnGatewayConnection {
   server: Server;
 
   private readonly logger = new Logger(EventsGateway.name);
-
   constructor(
     private readonly jwtService: JwtService,
     private readonly config: ConfigService,

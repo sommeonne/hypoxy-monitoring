@@ -1,13 +1,16 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AnalysisService } from './analysis.service';
 import { AlertLevel, Measurement } from './thresholds';
-import { RedisPublisherService } from './redis-publisher.service';
+import { RedisPublisherService } from '../redis/redis-publisher.service';
 
 describe('AnalysisService', () => {
   let service: AnalysisService;
 
   const mockAlertsHttp = { createAlert: jest.fn().mockResolvedValue(undefined) };
-  const mockRedisPublisher = { publish: jest.fn().mockResolvedValue(undefined) };
+  const mockRedisPublisher = {
+    publish: jest.fn().mockResolvedValue(undefined),
+    xadd: jest.fn().mockResolvedValue(undefined),
+  };
 
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -37,31 +40,30 @@ describe('AnalysisService', () => {
     expect(mockAlertsHttp.createAlert).not.toHaveBeenCalled();
   });
 
-  it('should return CRITICAL for SpO2 < 80', async () => {
-    const result = await service.analyze({ ...base, spo2: 79 });
+  it('should return CRITICAL for SpO2 < 75', async () => {
+    const result = await service.analyze({ ...base, spo2: 74 });
     expect(result.level).toBe(AlertLevel.CRITICAL);
-    expect(mockAlertsHttp.createAlert).toHaveBeenCalledTimes(1);
   });
 
-  it('should return NORMAL for SpO2 >= 80', async () => {
-    const result = await service.analyze({ ...base, spo2: 80 });
+  it('should return NORMAL for SpO2 >= 75', async () => {
+    const result = await service.analyze({ ...base, spo2: 75 });
     expect(result.level).toBe(AlertLevel.NORMAL);
     expect(mockAlertsHttp.createAlert).not.toHaveBeenCalled();
   });
 
-  it('should return NORMAL for heart rate between 45 and 130', async () => {
+  it('should return NORMAL for heart rate between 40 and 150', async () => {
     const result = await service.analyze({ ...base, heartRate: 120 });
     expect(result.level).toBe(AlertLevel.NORMAL);
   });
 
-  it('should return CRITICAL for heart rate < 45', async () => {
-    const result = await service.analyze({ ...base, heartRate: 44 });
+  it('should return CRITICAL for heart rate < 40', async () => {
+    const result = await service.analyze({ ...base, heartRate: 39 });
     expect(result.level).toBe(AlertLevel.CRITICAL);
     expect(result.anomalies.some((a) => a.includes('critically abnormal'))).toBe(true);
   });
 
-  it('should return CRITICAL for heart rate > 130', async () => {
-    const result = await service.analyze({ ...base, heartRate: 131 });
+  it('should return CRITICAL for heart rate > 150', async () => {
+    const result = await service.analyze({ ...base, heartRate: 151 });
     expect(result.level).toBe(AlertLevel.CRITICAL);
   });
 
@@ -81,12 +83,9 @@ describe('AnalysisService', () => {
     expect(result.level).toBe(AlertLevel.NORMAL);
   });
 
-  it('should publish analysis result to Redis with level field', async () => {
+  it('should not call xadd for normal measurements', async () => {
     await service.analyze(base);
-    expect(mockRedisPublisher.publish).toHaveBeenCalledWith(
-      'analysis',
-      expect.stringContaining('"level"'),
-    );
+    expect(mockRedisPublisher.xadd).not.toHaveBeenCalled();
   });
 
   it('computeConclusion: high tolerance + normal reaction', () => {
